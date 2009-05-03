@@ -66,8 +66,8 @@
    </dependencies>
    <description>Extras for Tomcat 6</description>
    <scm>
-      <connection>http://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</connection>
-      <developerConnection>http://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</developerConnection>
+      <connection>scm:svn:http://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</connection>
+      <developerConnection>scm:svn:http://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</developerConnection>
       <tag>HEAD</tag>
       <url>http://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/</url>
    </scm>
