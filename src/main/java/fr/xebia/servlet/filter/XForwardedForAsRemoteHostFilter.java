@@ -28,9 +28,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.log4j.Logger;
 
 /**
  * @author <a href="mailto:cyrille.leclerc@pobox.com">Cyrille Le Clerc</a>
@@ -66,8 +63,10 @@ public class XForwardedForAsRemoteHostFilter implements Filter {
         
         @Override
         public String getHeader(String name) {
-            if (X_ORIGINAL_REMOTE_ADDR_HEADER_NAME.equalsIgnoreCase(name) || X_ORIGINAL_REMOTE_HOST_HEADER_NAME.equalsIgnoreCase(name)) {
-                return xForwardedFor;
+            if (X_ORIGINAL_REMOTE_ADDR_HEADER_NAME.equalsIgnoreCase(name)) {
+                return originalRemoteAddr;
+            } else if (X_ORIGINAL_REMOTE_HOST_HEADER_NAME.equalsIgnoreCase(name)) {
+                return originalRemoteHost;
             } else {
                 return super.getHeader(name);
             }
@@ -86,8 +85,10 @@ public class XForwardedForAsRemoteHostFilter implements Filter {
         
         @Override
         public Enumeration<?> getHeaders(String name) {
-            if (X_ORIGINAL_REMOTE_ADDR_HEADER_NAME.equalsIgnoreCase(name) || X_ORIGINAL_REMOTE_HOST_HEADER_NAME.equalsIgnoreCase(name)) {
-                return Collections.enumeration(Collections.singletonList(xForwardedFor));
+            if (X_ORIGINAL_REMOTE_ADDR_HEADER_NAME.equalsIgnoreCase(name)) {
+                return Collections.enumeration(Collections.singletonList(originalRemoteAddr));
+            } else if (X_ORIGINAL_REMOTE_HOST_HEADER_NAME.equalsIgnoreCase(name)) {
+                return Collections.enumeration(Collections.singletonList(originalRemoteHost));
             } else {
                 return super.getHeaders(name);
             }
