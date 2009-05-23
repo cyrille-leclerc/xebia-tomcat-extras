@@ -16,20 +16,30 @@
 package org.apache.catalina.connector;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import javax.servlet.ServletException;
 
+import org.apache.catalina.util.StringManager;
+import org.apache.catalina.valves.Constants;
 import org.apache.catalina.valves.ValveBase;
 
 /**
+ * <p>
+ * Replaces the apparent client remote IP address and hostname for the request with the IP address list presented by a proxy or a load
+ * balancer via a request headers.
+ * </p>
+ * <p>
  * Tomcat port of <a href="http://httpd.apache.org/docs/trunk/mod/mod_remoteip.html">mod_remoteip</a>.
+ * </p>
+ * <p>
+ * TODO : add "remoteIpValve.syntax" NLSString.
+ * </p>
  * 
  * @author <a href="mailto:cyrille.leclerc@pobox.com">Cyrille Le Clerc</a>
  */
@@ -42,16 +52,35 @@ public class RemoteIpValve extends ValveBase {
      */
     private static final String info = "org.apache.catalina.connector.RemoteIpValve/1.0";
     
-    public static String[] commaDelimitedListToStringArray(String str) {
-        return (str == null || str.length() == 0) ? new String[0] : commaSeparatedPattern.split(str);
+    /**
+     * The StringManager for this package.
+     */
+    protected static StringManager sm = StringManager.getManager(Constants.Package);
+    
+    protected static Pattern[] commaDelimitedListToPatternArray(String commaDelimitedPatterns) {
+        String[] patterns = commaDelimitedListToStringArray(commaDelimitedPatterns);
+        List<Pattern> patternsList = new ArrayList<Pattern>();
+        for (String pattern : patterns) {
+            try {
+                patternsList.add(Pattern.compile(pattern));
+            } catch (PatternSyntaxException e) {
+                throw new IllegalArgumentException(sm.getString("remoteIpValve.syntax", pattern), e);
+            }
+        }
+        return patternsList.toArray(new Pattern[0]);
     }
     
-    public static String listToCommaDelimitedString(List<String> elements) {
-        if (elements == null) {
+    protected static String[] commaDelimitedListToStringArray(String commaDelimitedStrings) {
+        return (commaDelimitedStrings == null || commaDelimitedStrings.length() == 0) ? new String[0] : commaSeparatedPattern
+            .split(commaDelimitedStrings);
+    }
+    
+    protected static String listToCommaDelimitedString(List<String> stringList) {
+        if (stringList == null) {
             return "";
         }
         StringBuilder result = new StringBuilder();
-        for (Iterator<String> it = elements.iterator(); it.hasNext();) {
+        for (Iterator<String> it = stringList.iterator(); it.hasNext();) {
             String element = it.next();
             if (element != null) {
                 result.append(element);
@@ -63,13 +92,13 @@ public class RemoteIpValve extends ValveBase {
         return result.toString();
     }
     
-    private Set<String> allowedInternalProxies = new HashSet<String>();
+    private Pattern[] allowedInternalProxies = new Pattern[0];
     
     private String remoteIPHeader = "X-Forwarded-For";
     
     private String remoteIPProxiesHeader = "X-Forwarded-By";
     
-    private Set<String> trustedProxies = new HashSet<String>();
+    private Pattern[] trustedProxies = new Pattern[0];
     
     /**
      * Return descriptive information about this Valve implementation.
@@ -83,7 +112,7 @@ public class RemoteIpValve extends ValveBase {
         final String originalRemoteAddr = request.getRemoteAddr();
         final String originalRemoteHost = request.getRemoteHost();
         
-        if (allowedInternalProxies.contains(originalRemoteAddr)) {
+        if (matchesOne(originalRemoteAddr, allowedInternalProxies)) {
             String remoteIp = null;
             // In java 6, remoteIpProxiesHeaderValue will be declared as a java.util.deque
             LinkedList<String> remoteIpProxiesHeaderValue = new LinkedList<String>();
@@ -97,7 +126,7 @@ public class RemoteIpValve extends ValveBase {
             for (idx = remoteIPHeaderValue.length - 1; idx >= 0; idx--) {
                 String currentRemoteIp = remoteIPHeaderValue[idx];
                 remoteIp = currentRemoteIp;
-                if (trustedProxies.contains(currentRemoteIp)) {
+                if (matchesOne(currentRemoteIp, trustedProxies)) {
                     remoteIpProxiesHeaderValue.addFirst(currentRemoteIp);
                 } else {
                     idx--; // decrement idx because break doesn't do it
@@ -118,7 +147,7 @@ public class RemoteIpValve extends ValveBase {
                     request.getCoyoteRequest().getMimeHeaders().removeHeader(remoteIPProxiesHeader);
                 } else {
                     String commaDelimitedListOfProxies = listToCommaDelimitedString(remoteIpProxiesHeaderValue);
-                    request.getCoyoteRequest().getMimeHeaders().addValue(remoteIPProxiesHeader).setString(commaDelimitedListOfProxies);
+                    request.getCoyoteRequest().getMimeHeaders().setValue(remoteIPProxiesHeader).setString(commaDelimitedListOfProxies);
                 }
                 if (newRemoteIpHeaderValue.size() == 0) {
                     request.getCoyoteRequest().getMimeHeaders().removeHeader(remoteIPHeader);
@@ -136,9 +165,17 @@ public class RemoteIpValve extends ValveBase {
         }
     }
     
+    protected boolean matchesOne(String str, Pattern[] patterns) {
+        for (Pattern pattern : patterns) {
+            if (pattern.matcher(str).matches()) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     public void setAllowedInternalProxies(String commaDelimitedAllowedInternalProxies) {
-        String[] allowedInternalProxiesArray = commaDelimitedListToStringArray(commaDelimitedAllowedInternalProxies);
-        this.allowedInternalProxies = new HashSet<String>(Arrays.asList(allowedInternalProxiesArray));
+        this.allowedInternalProxies = commaDelimitedListToPatternArray(commaDelimitedAllowedInternalProxies);
     }
     
     /**
@@ -158,7 +195,6 @@ public class RemoteIpValve extends ValveBase {
     }
     
     public void setTrustedProxies(String commaDelimitedTrustedProxies) {
-        String[] trustedProxiesArray = commaDelimitedListToStringArray(commaDelimitedTrustedProxies);
-        this.trustedProxies = new HashSet<String>(Arrays.asList(trustedProxiesArray));
+        this.trustedProxies = commaDelimitedListToPatternArray(commaDelimitedTrustedProxies);
     }
 }
