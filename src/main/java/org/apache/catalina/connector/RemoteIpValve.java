@@ -113,7 +113,8 @@ import org.apache.juli.logging.LogFactory;
  * to no longer be no-op but actually set the underlying property.
  * </p>
  * <p>
- * <strong>Sample with trusted proxies</strong> </p>
+ * <strong>Sample with trusted proxies</strong>
+ * </p>
  * <p>
  * RemoteIpValve configuration:
  * <ul>
@@ -276,8 +277,14 @@ import org.apache.juli.logging.LogFactory;
  */
 public class RemoteIpValve extends ValveBase {
     
+    /**
+     * Logger
+     */
     private static Log log = LogFactory.getLog(RemoteIpValve.class);
     
+    /**
+     * {@link Pattern} for a comma delimited string that support whitespace characters
+     */
     private static final Pattern commaSeparatedValuesPattern = Pattern.compile("\\s*,\\s*");
     
     /**
@@ -290,6 +297,9 @@ public class RemoteIpValve extends ValveBase {
      */
     protected static StringManager sm = StringManager.getManager(Constants.Package);
     
+    /**
+     * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
+     */
     protected static Pattern[] commaDelimitedListToPatternArray(String commaDelimitedPatterns) {
         String[] patterns = commaDelimitedListToStringArray(commaDelimitedPatterns);
         List<Pattern> patternsList = new ArrayList<Pattern>();
@@ -303,11 +313,17 @@ public class RemoteIpValve extends ValveBase {
         return patternsList.toArray(new Pattern[0]);
     }
     
+    /**
+     * Convert a given comma delimited list of regular expressions into an array of String
+     */
     protected static String[] commaDelimitedListToStringArray(String commaDelimitedStrings) {
         return (commaDelimitedStrings == null || commaDelimitedStrings.length() == 0) ? new String[0] : commaSeparatedValuesPattern
             .split(commaDelimitedStrings);
     }
     
+    /**
+     * Convert an array of strings in a comma delimited string
+     */
     protected static String listToCommaDelimitedString(List<String> stringList) {
         if (stringList == null) {
             return "";
@@ -325,6 +341,9 @@ public class RemoteIpValve extends ValveBase {
         return result.toString();
     }
     
+    /**
+     * Return <code>true</code> if the given <code>str</code> matches at least one of the given <code>patterns</code>.
+     */
     protected static boolean matchesOne(String str, Pattern... patterns) {
         for (Pattern pattern : patterns) {
             if (pattern.matcher(str).matches()) {
@@ -334,8 +353,6 @@ public class RemoteIpValve extends ValveBase {
         return false;
     }
     
-    // \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}
-    // 10/8, 172.16/12, 192.168/16, 169.254/16 and 127/8
     private Pattern[] internalProxies = new Pattern[] {
         Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"),
         Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
@@ -421,6 +438,9 @@ public class RemoteIpValve extends ValveBase {
     
     /**
      * <p>
+     * Comma delimited list of internal proxies. Can be expressed with regular expressions.
+     * </p>
+     * <p>
      * Default value : 10\.\d{1,3}\.\d{1,3}\.\d{1,3}, 192\.168\.\d{1,3}\.\d{1,3}, 127\.\d{1,3}\.\d{1,3}\.\d{1,3}
      * </p>
      */
@@ -467,7 +487,11 @@ public class RemoteIpValve extends ValveBase {
     
     /**
      * <p>
-     * Comma delimited list of proxies that are trusted when they appear in the {@link #remoteIPHeader} header.
+     * Comma delimited list of proxies that are trusted when they appear in the {@link #remoteIPHeader} header. Can be expressed as a
+     * regular expression.
+     * </p>
+     * <p>
+     * Default value : empty list, no external proxy is trusted.
      * </p>
      */
     public void setTrustedProxies(String commaDelimitedTrustedProxies) {
