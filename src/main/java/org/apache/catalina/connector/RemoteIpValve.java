@@ -97,15 +97,23 @@ import org.apache.juli.logging.LogFactory;
  * <p>
  * This Valve may be attached to any Container, depending on the granularity of the filtering you wish to perform.
  * </p>
+ * <p>
  * <strong>Regular expression vs. IP address blocks:</strong> <code>mod_remoteip</code> allows to use address blocks (e.g.
  * <code>192.168/16</code>) to configure <code>RemoteIPInternalProxy</code> and <code>RemoteIPTrustedProxy</code> ; as Tomcat doesn't have a
  * library similar to <a
  * href="http://apr.apache.org/docs/apr/1.3/group__apr__network__io.html#gb74d21b8898b7c40bf7fd07ad3eb993d">apr_ipsubnet_test</a>,
  * <code>RemoteIpValve</code> uses regular expression to configure <code>internalProxies</code> and <code>trustedProxies</code> in the same
- * fashion as {@link RequestFilterValve} does. </p>
- * <p>
- * <strong>Sample with trusted proxies</strong>
+ * fashion as {@link RequestFilterValve} does.
  * </p>
+ * <p>
+ * <strong>Package, <code>org.apache.catalina.connector</code> vs. <code>org.apache.catalina.valves</code></strong>: This valve is
+ * temporarily located in <code>org.apache.catalina.connector</code> package instead of <code>org.apache.catalina.valves</code> because it
+ * uses <code>protected</code> visibility of {@link Request#remoteAddr} and {@link Request#remoteHost}. This valve could move to
+ * <code>org.apache.catalina.valves</code> if {@link Request#setRemoteAddr(String)} and {@link Request#setRemoteHost(String)} were modified
+ * to no longer be no-op but actually set the underlying property.
+ * </p>
+ * <p>
+ * <strong>Sample with trusted proxies</strong> </p>
  * <p>
  * RemoteIpValve configuration:
  * <ul>
