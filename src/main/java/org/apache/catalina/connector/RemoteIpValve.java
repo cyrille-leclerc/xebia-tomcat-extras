@@ -353,15 +353,27 @@ public class RemoteIpValve extends ValveBase {
         return false;
     }
     
+    /**
+     * @see #setInternalProxies(String)
+     */
     private Pattern[] internalProxies = new Pattern[] {
         Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"),
         Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
     };
     
+    /**
+     * @see #setRemoteIPHeader(String)
+     */
     private String remoteIPHeader = "X-Forwarded-For";
     
+    /**
+     * @see #setProxiesHeader(String)
+     */
     private String proxiesHeader = "X-Forwarded-By";
     
+    /**
+     * @see RemoteIpValve#setTrustedProxies(String)
+     */
     private Pattern[] trustedProxies = new Pattern[0];
     
     /**
@@ -371,6 +383,9 @@ public class RemoteIpValve extends ValveBase {
         return info;
     }
     
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
         final String originalRemoteAddr = request.getRemoteAddr();
@@ -392,11 +407,11 @@ public class RemoteIpValve extends ValveBase {
                 } else if (matchesOne(currentRemoteIp, trustedProxies)) {
                     proxiesHeaderValue.addFirst(currentRemoteIp);
                 } else {
-                    idx--; // decrement idx because break doesn't do it
+                    idx--; // decrement idx because break statement doesn't do it
                     break;
                 }
             }
-            // continue to loop on remoteIPHeaderValue to build the new value of the RemoteIp header
+            // continue to loop on remoteIPHeaderValue to build the new value of the remoteIPHeader
             LinkedList<String> newRemoteIpHeaderValue = new LinkedList<String>();
             for (; idx >= 0; idx--) {
                 String currentRemoteIp = remoteIPHeaderValue[idx];
@@ -405,14 +420,14 @@ public class RemoteIpValve extends ValveBase {
             if (remoteIp != null) {
                 if (log.isInfoEnabled()) {
                     log.debug("Overwrite remoteAddr '" + request.remoteAddr + "' and remoteHost '" + request.remoteHost + "' by remoteIp '"
-                              + remoteIp + "' for " + remoteIPHeader + " : " + request.getHeader(remoteIPHeader));
+                              + remoteIp + "' for incoming '" + remoteIPHeader + "' : '" + request.getHeader(remoteIPHeader) + "'");
                 }
                 
-                // use field access instead of setters because setters are no-op in Tomcat 6.0
+                // use field access instead of setters because request.setRemoteAddr(str) and request.setRemoteHost() are no-op in Tomcat 6.0
                 request.remoteAddr = remoteIp;
                 request.remoteHost = remoteIp;
                 
-                // In Tomcat 6.0, Request.addHeader is no-op, use request.coyoteRequest.mimeHeaders.add
+                // use request.coyoteRequest.mimeHeaders.setValue(str).setString(str) because request.addHeader(str, str) is no-op in Tomcat 6.0
                 if (proxiesHeaderValue.size() == 0) {
                     request.getCoyoteRequest().getMimeHeaders().removeHeader(proxiesHeader);
                 } else {
