@@ -67,7 +67,7 @@ import org.apache.juli.logging.LogFactory;
  * <tr>
  * <td>remoteIPHeader</td>
  * <td>RemoteIPHeader</td>
- * <td>Http header compliant string</td>
+ * <td>Compliant http header string</td>
  * <td>x-forwarded-for</td>
  * </tr>
  * <tr>
@@ -82,7 +82,7 @@ import org.apache.juli.logging.LogFactory;
  * <tr>
  * <td>proxiesHeader</td>
  * <td>RemoteIPProxiesHeader</td>
- * <td>Http Header compliant String</td>
+ * <td>Compliant http header String</td>
  * <td>x-forwarded-by</td>
  * </tr>
  * <tr>
@@ -106,24 +106,27 @@ import org.apache.juli.logging.LogFactory;
  * fashion as {@link RequestFilterValve} does.
  * </p>
  * <p>
- * <strong>Package, <code>org.apache.catalina.connector</code> vs. <code>org.apache.catalina.valves</code></strong>: This valve is
+ * <strong>Package org.apache.catalina.connector vs. org.apache.catalina.valves</strong>: This valve is
  * temporarily located in <code>org.apache.catalina.connector</code> package instead of <code>org.apache.catalina.valves</code> because it
  * uses <code>protected</code> visibility of {@link Request#remoteAddr} and {@link Request#remoteHost}. This valve could move to
  * <code>org.apache.catalina.valves</code> if {@link Request#setRemoteAddr(String)} and {@link Request#setRemoteHost(String)} were modified
  * to no longer be no-op but actually set the underlying property.
  * </p>
+ * <hr/>
  * <p>
  * <strong>Sample with trusted proxies</strong>
  * </p>
  * <p>
  * RemoteIpValve configuration:
- * <ul>
- * <li>trustedProxies: proxy1, proxy2</li>
- * <li>internalProxies: 192\.168\.0\.10, 192\.168\.0\.11
- * <li>remoteIPHeader: x-forwarded-for</li>
- * <li>proxiesHeader: x-forwarded-by</li>
- * </ul>
  * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   trustedProxies="proxy1, proxy2"
+ *   /&gt;</pre></code>
  * <p>
  * Request values:
  * <table border="1">
@@ -151,18 +154,21 @@ import org.apache.juli.logging.LogFactory;
  * Note : <code>proxy1</code> and <code>proxy2</code> are both trusted proxies that come in <code>x-forwarded-for</code> header, they both
  * are migrated in <code>x-forwarded-by</code> header. <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
  * </p>
+ * <hr/>
  * <p>
- * <strong>Sample with trusted and internal proxies</strong>
+ * <strong>Sample with internal and trusted proxies</strong>
  * </p>
  * <p>
  * RemoteIpValve configuration:
- * <ul>
- * <li>trustedProxies: proxy1, proxy2</li>
- * <li>internalProxies: 192\.168\.0\.10, 192\.168\.0\.11
- * <li>remoteIPHeader: x-forwarded-for</li>
- * <li>proxiesHeader: x-forwarded-by</li>
- * </ul>
  * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   trustedProxies="proxy1, proxy2"
+ *   /&gt;</pre></code>
  * <p>
  * Request values:
  * <table border="1">
@@ -191,18 +197,21 @@ import org.apache.juli.logging.LogFactory;
  * are migrated in <code>x-forwarded-by</code> header. As <code>192.168.0.10</code> is an internal proxy, it does not appear in
  * <code>x-forwarded-by</code>. <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
  * </p>
+ * <hr/>
  * <p>
  * <strong>Sample with internal proxies</strong>
  * </p>
  * <p>
  * RemoteIpValve configuration:
- * <ul>
- * <li>trustedProxies: proxy1, proxy2</li>
- * <li>internalProxies: 192\.168\.0\.10, 192\.168\.0\.11
- * <li>remoteIPHeader: x-forwarded-for</li>
- * <li>proxiesHeader: x-forwarded-by</li>
- * </ul>
  * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   /&gt;</pre></code>
+ *
  * <p>
  * Request values:
  * <table border="1">
@@ -230,18 +239,21 @@ import org.apache.juli.logging.LogFactory;
  * Note : <code>x-forwarded-by</code> header is null because only internal proxies as been traversed by the request.
  * <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
  * </p>
+ * <hr/>
  * <p>
  * <strong>Sample with an untrusted proxy</strong>
  * </p>
  * <p>
  * RemoteIpValve configuration:
- * <ul>
- * <li>trustedProxies: proxy1, proxy2</li>
- * <li>internalProxies: 192\.168\.0\.10, 192\.168\.0\.11
- * <li>remoteIPHeader: x-forwarded-for</li>
- * <li>proxiesHeader: x-forwarded-by</li>
- * </ul>
  * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   trustedProxies="proxy1, proxy2"
+ *   /&gt;</pre></code>
  * <p>
  * Request values:
  * <table border="1">
@@ -271,6 +283,7 @@ import org.apache.juli.logging.LogFactory;
  * <code>untrusted-proxy</code> is the actual remote ip. <code>request.remoteAddr</code> is <code>untrusted-proxy</code> that is an IP
  * verified by <code>proxy1</code>.
  * </p>
+ * <hr/>
  * <p>
  * TODO : add "remoteIpValve.syntax" NLSString.
  * </p>
