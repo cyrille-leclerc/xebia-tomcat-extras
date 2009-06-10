@@ -106,9 +106,9 @@ import org.apache.juli.logging.LogFactory;
  * fashion as {@link RequestFilterValve} does.
  * </p>
  * <p>
- * <strong>Package org.apache.catalina.connector vs. org.apache.catalina.valves</strong>: This valve is
- * temporarily located in <code>org.apache.catalina.connector</code> package instead of <code>org.apache.catalina.valves</code> because it
- * uses <code>protected</code> visibility of {@link Request#remoteAddr} and {@link Request#remoteHost}. This valve could move to
+ * <strong>Package org.apache.catalina.connector vs. org.apache.catalina.valves</strong>: This valve is temporarily located in
+ * <code>org.apache.catalina.connector</code> package instead of <code>org.apache.catalina.valves</code> because it uses
+ * <code>protected</code> visibility of {@link Request#remoteAddr} and {@link Request#remoteHost}. This valve could move to
  * <code>org.apache.catalina.valves</code> if {@link Request#setRemoteAddr(String)} and {@link Request#setRemoteHost(String)} were modified
  * to no longer be no-op but actually set the underlying property.
  * </p>
@@ -211,7 +211,6 @@ import org.apache.juli.logging.LogFactory;
  *   remoteIPHeader="x-forwarded-for"
  *   remoteIPProxiesHeader="x-forwarded-by"
  *   /&gt;</pre></code>
- *
  * <p>
  * Request values:
  * <table border="1">
@@ -327,6 +326,13 @@ public class RemoteIpValve extends ValveBase {
     }
     
     /**
+     * @see #setProtocolHeader(String)
+     */
+    private String protocolHeader = null;
+    
+    private String protocolHeaderSslValue = "HTTPS";
+    
+    /**
      * Convert a given comma delimited list of regular expressions into an array of String
      */
     protected static String[] commaDelimitedListToStringArray(String commaDelimitedStrings) {
@@ -403,6 +409,8 @@ public class RemoteIpValve extends ValveBase {
     public void invoke(Request request, Response response) throws IOException, ServletException {
         final String originalRemoteAddr = request.getRemoteAddr();
         final String originalRemoteHost = request.getRemoteHost();
+        final String originalScheme = request.getScheme();
+        final boolean originalSecure = request.isSecure();
         
         if (matchesOne(originalRemoteAddr, internalProxies)) {
             String remoteIp = null;
@@ -431,16 +439,14 @@ public class RemoteIpValve extends ValveBase {
                 newRemoteIpHeaderValue.addFirst(currentRemoteIp);
             }
             if (remoteIp != null) {
-                if (log.isInfoEnabled()) {
-                    log.debug("Overwrite remoteAddr '" + request.remoteAddr + "' and remoteHost '" + request.remoteHost + "' by remoteIp '"
-                              + remoteIp + "' for incoming '" + remoteIPHeader + "' : '" + request.getHeader(remoteIPHeader) + "'");
-                }
                 
-                // use field access instead of setters because request.setRemoteAddr(str) and request.setRemoteHost() are no-op in Tomcat 6.0
+                // use field access instead of setters because request.setRemoteAddr(str) and request.setRemoteHost() are no-op in Tomcat
+                // 6.0
                 request.remoteAddr = remoteIp;
                 request.remoteHost = remoteIp;
                 
-                // use request.coyoteRequest.mimeHeaders.setValue(str).setString(str) because request.addHeader(str, str) is no-op in Tomcat 6.0
+                // use request.coyoteRequest.mimeHeaders.setValue(str).setString(str) because request.addHeader(str, str) is no-op in Tomcat
+                // 6.0
                 if (proxiesHeaderValue.size() == 0) {
                     request.getCoyoteRequest().getMimeHeaders().removeHeader(proxiesHeader);
                 } else {
@@ -454,6 +460,22 @@ public class RemoteIpValve extends ValveBase {
                     request.getCoyoteRequest().getMimeHeaders().setValue(remoteIPHeader).setString(commaDelimitedRemoteIpHeaderValue);
                 }
             }
+            
+            if (protocolHeader != null) {
+                String protocolHeaderValue = request.getHeader(protocolHeader);
+                if (protocolHeaderValue != null && protocolHeaderSslValue.equalsIgnoreCase(protocolHeaderValue)) {
+                    request.setSecure(true);
+                    // use request.coyoteRequest.scheme instead of request.setScheme() because request.setScheme() is no-op in Tomcat 6.0
+                    request.getCoyoteRequest().scheme().setString("https");                    
+                }
+            }
+            
+            if (log.isDebugEnabled()) {
+                log.debug("Incoming request " + request.getRequestURI() + " with originalRemoteAddr '" + originalRemoteAddr
+                          + "', originalRemoteHost='" + originalRemoteHost + "', originalSecure='" + originalSecure + "', originalScheme='"
+                          + originalScheme + " will be seen as newRemoteAddr='" + request.getRemoteAddr() + "', newRemoteHost='"
+                          + request.getRemoteHost() + "', newScheme='" + request.getScheme() + "', newSecure='" + request.isSecure() + "'");
+            }
         }
         try {
             getNext().invoke(request, response);
@@ -461,6 +483,11 @@ public class RemoteIpValve extends ValveBase {
             // use field access instead of setters because setters are no-op in Tomcat 6.0
             request.remoteAddr = originalRemoteAddr;
             request.remoteHost = originalRemoteHost;
+            
+            request.setSecure(originalSecure);
+            
+            // use request.coyoteRequest.scheme instead of request.setScheme() because request.setScheme() is no-op in Tomcat 6.0
+            request.getCoyoteRequest().scheme().setString(originalScheme);
         }
     }
     
@@ -524,5 +551,30 @@ public class RemoteIpValve extends ValveBase {
      */
     public void setTrustedProxies(String commaDelimitedTrustedProxies) {
         this.trustedProxies = commaDelimitedListToPatternArray(commaDelimitedTrustedProxies);
+    }
+    
+    /**
+     * <p>
+     * Header that holds the incoming protocol, usally named <code>X-Forwarded-Proto</code>. If <code>null</code>, request.scheme and
+     * request.secure will not be modified.
+     * </p>
+     * <p>
+     * Default value : <code>null</code>
+     * </p>
+     */
+    public void setProtocolHeader(String protocolHeader) {
+        this.protocolHeader = protocolHeader;
+    }
+    
+    /**
+     * <p>
+     * Case insensitive value of the protocol header to indicate that the incoming http request uses SSL.
+     * </p>
+     * <p>
+     * Default value : <code>HTTPS</code>
+     * </p>
+     */
+    public void setProtocolHeaderSslValue(String protocolHeaderSslValue) {
+        this.protocolHeaderSslValue = protocolHeaderSslValue;
     }
 }
