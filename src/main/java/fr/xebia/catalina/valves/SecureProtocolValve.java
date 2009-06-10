@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
 
 import org.apache.catalina.connector.Request;
 import org.apache.catalina.connector.Response;
@@ -70,9 +71,12 @@ public class SecureProtocolValve extends ValveBase {
         Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
     };
     
-    String protocolHeader = "X-Forwarded-Proto";
+    /**
+     * @see #setProtocolHeader(String)
+     */
+    private String protocolHeader = "X-Forwarded-Proto";
     
-    String protocolHeaderSslValue = "HTTPS";
+    private String protocolHeaderSslValue = "HTTPS";
     
     /**
      * @see #setSecuredRemoteAddresses(String)
@@ -82,6 +86,14 @@ public class SecureProtocolValve extends ValveBase {
         Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
     };
     
+    /**
+     * @see #setSeeSecuredRemoteAddressesAsSsl(boolean)
+     */
+    private boolean seeSecuredRemoteAddressesAsSsl = false;
+    
+    /**
+     * @inheritDoc
+     */
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
         final String originalScheme = request.getScheme();
@@ -93,14 +105,23 @@ public class SecureProtocolValve extends ValveBase {
             String protocolHeaderValue = request.getHeader(protocolHeader);
             if (protocolHeaderValue != null) {
                 scheme = protocolHeaderValue;
-                if ("https".equalsIgnoreCase(scheme)) {
+                if (protocolHeaderSslValue.equalsIgnoreCase(scheme)) {
                     secure = true;
                 }
             }
         }
         
         if (matchesOne(request.getRemoteAddr(), securedRemoteAddresses)) {
-            secure = true;            
+            secure = true;
+            if (seeSecuredRemoteAddressesAsSsl) {
+                scheme = "https";
+                
+            }
+        }
+        
+        if (log.isDebugEnabled()) {
+            log.debug("Incoming request.uri=" + request.getRequestURI() + ", request.scheme=" + originalScheme + ", request.secure="
+                      + originalSecure + " will be seen as scheme=" + scheme + ", secure=" + secure);
         }
         
         request.setSecure(secure);
@@ -128,6 +149,25 @@ public class SecureProtocolValve extends ValveBase {
     }
     
     /**
+     * Default value : <code>X-Forwarded-Proto</code>
+     */
+    public void setProtocolHeader(String protocolHeader) {
+        this.protocolHeader = protocolHeader;
+    }
+    
+    /**
+     * <p>
+     * Case insensitive value of the protocol header to indicate that the incoming http request uses SSL.
+     * </p>
+     * <p>
+     * Default value : <code>HTTPS</code>
+     * </p>
+     */
+    public void setProtocolHeaderSslValue(String protocolHeaderSslValue) {
+        this.protocolHeaderSslValue = protocolHeaderSslValue;
+    }
+    
+    /**
      * <p>
      * Comma delimited list of secured IP addresses proxies. Expressed with regular expressions.
      * </p>
@@ -137,6 +177,15 @@ public class SecureProtocolValve extends ValveBase {
      */
     public void setSecuredRemoteAddresses(String securedRemoteAddresses) {
         this.securedRemoteAddresses = commaDelimitedListToPatternArray(securedRemoteAddresses);
+    }
+    
+    /**
+     * If set to <code>true</code>, http request coming from one of the secured remote addresses (see
+     * {@link #setSecuredRemoteAddresses(String)}) will have the scheme https. Useful for frameworks like Spring Security which filter on
+     * {@link HttpServletRequest#getScheme()} rather than {@link HttpServletRequest#isSecure()} .
+     */
+    public void setSeeSecuredRemoteAddressesAsSsl(boolean seeSecuredRemoteAddressesAsSsl) {
+        this.seeSecuredRemoteAddressesAsSsl = seeSecuredRemoteAddressesAsSsl;
     }
     
 }
