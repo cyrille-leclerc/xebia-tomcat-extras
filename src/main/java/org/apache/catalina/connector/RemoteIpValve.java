@@ -284,15 +284,10 @@ import org.apache.juli.logging.LogFactory;
  * </p>
  * <hr/>
  * <p>
- * TODO : add "remoteIpValve.syntax" NLSString.
+ * TODO : add "remoteIpValve.syntax" NLSString, declare valve in mbeans-descriptors.xml
  * </p>
  */
 public class RemoteIpValve extends ValveBase {
-    
-    /**
-     * Logger
-     */
-    private static Log log = LogFactory.getLog(RemoteIpValve.class);
     
     /**
      * {@link Pattern} for a comma delimited string that support whitespace characters
@@ -305,12 +300,19 @@ public class RemoteIpValve extends ValveBase {
     private static final String info = "org.apache.catalina.connector.RemoteIpValve/1.0";
     
     /**
+     * Logger
+     */
+    private static Log log = LogFactory.getLog(RemoteIpValve.class);
+    
+    /**
      * The StringManager for this package.
      */
     protected static StringManager sm = StringManager.getManager(Constants.Package);
     
     /**
      * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
+     * 
+     * @return array of pattenrs (not <code>null</code>)
      */
     protected static Pattern[] commaDelimitedListToPatternArray(String commaDelimitedPatterns) {
         String[] patterns = commaDelimitedListToStringArray(commaDelimitedPatterns);
@@ -326,14 +328,9 @@ public class RemoteIpValve extends ValveBase {
     }
     
     /**
-     * @see #setProtocolHeader(String)
-     */
-    private String protocolHeader = null;
-    
-    private String protocolHeaderSslValue = "HTTPS";
-    
-    /**
      * Convert a given comma delimited list of regular expressions into an array of String
+     * 
+     * @return array of patterns (non <code>null</code>)
      */
     protected static String[] commaDelimitedListToStringArray(String commaDelimitedStrings) {
         return (commaDelimitedStrings == null || commaDelimitedStrings.length() == 0) ? new String[0] : commaSeparatedValuesPattern
@@ -349,7 +346,7 @@ public class RemoteIpValve extends ValveBase {
         }
         StringBuilder result = new StringBuilder();
         for (Iterator<String> it = stringList.iterator(); it.hasNext();) {
-            String element = it.next();
+            Object element = it.next();
             if (element != null) {
                 result.append(element);
                 if (it.hasNext()) {
@@ -381,14 +378,21 @@ public class RemoteIpValve extends ValveBase {
     };
     
     /**
-     * @see #setRemoteIPHeader(String)
+     * @see #setProtocolHeader(String)
      */
-    private String remoteIPHeader = "X-Forwarded-For";
+    private String protocolHeader = null;
+    
+    private String protocolHeaderSslValue = "HTTPS";
     
     /**
      * @see #setProxiesHeader(String)
      */
     private String proxiesHeader = "X-Forwarded-By";
+    
+    /**
+     * @see #setRemoteIPHeader(String)
+     */
+    private String remoteIPHeader = "X-Forwarded-For";
     
     /**
      * @see RemoteIpValve#setTrustedProxies(String)
@@ -400,6 +404,62 @@ public class RemoteIpValve extends ValveBase {
      */
     public String getInfo() {
         return info;
+    }
+    
+    /**
+     * @see #setInternalProxies(String)
+     * @return comma delimited list of internal proxies
+     */
+    public String getInternalProxies() {
+        List<String> internalProxiesAsStringList = new ArrayList<String>();
+        for (Pattern internalProxyPattern : internalProxies) {
+            internalProxiesAsStringList.add(String.valueOf(internalProxyPattern));
+        }
+        return listToCommaDelimitedString(internalProxiesAsStringList);
+    }
+    
+    /**
+     * @see #setProtocolHeader(String)
+     * @return the protocol header (e.g. "X-Forwarded-Proto")
+     */
+    public String getProtocolHeader() {
+        return protocolHeader;
+    }
+    
+    /**
+     * @see RemoteIpValve#setProtocolHeaderSslValue(String)
+     * @return the value of the protocol header for incoming https request (e.g. "https")
+     */
+    public String getProtocolHeaderSslValue() {
+        return protocolHeaderSslValue;
+    }
+    
+    /**
+     * @see #setProxiesHeader(String)
+     * @return the proxies header name (e.g. "X-Forwarded-By")
+     */
+    public String getProxiesHeader() {
+        return proxiesHeader;
+    }
+    
+    /**
+     * @see #setRemoteIPHeader(String)
+     * @return the remote IP header name (e.g. "X-Forwarded-For")
+     */
+    public String getRemoteIPHeader() {
+        return remoteIPHeader;
+    }
+    
+    /**
+     * @see #setTrustedProxies(String)
+     * @return comma delimited list of trusted proxies
+     */
+    public String getTrustedProxies() {
+        List<String> trustedProxiesAsStringList = new ArrayList<String>();
+        for (Pattern trustedProxy : trustedProxies) {
+            trustedProxiesAsStringList.add(String.valueOf(trustedProxy));
+        }
+        return listToCommaDelimitedString(trustedProxiesAsStringList);
     }
     
     /**
@@ -466,7 +526,7 @@ public class RemoteIpValve extends ValveBase {
                 if (protocolHeaderValue != null && protocolHeaderSslValue.equalsIgnoreCase(protocolHeaderValue)) {
                     request.setSecure(true);
                     // use request.coyoteRequest.scheme instead of request.setScheme() because request.setScheme() is no-op in Tomcat 6.0
-                    request.getCoyoteRequest().scheme().setString("https");                    
+                    request.getCoyoteRequest().scheme().setString("https");
                 }
             }
             
@@ -505,19 +565,27 @@ public class RemoteIpValve extends ValveBase {
     
     /**
      * <p>
-     * Name of the http header from which the remote ip is extracted.
+     * Header that holds the incoming protocol, usally named <code>X-Forwarded-Proto</code>. If <code>null</code>, request.scheme and
+     * request.secure will not be modified.
      * </p>
      * <p>
-     * The value of this header can be comma delimited.
+     * Default value : <code>null</code>
      * </p>
-     * <p>
-     * Default value : <code>X-Forwarded-For</code>
-     * </p>
-     * 
-     * @param remoteIPHeader
      */
-    public void setRemoteIPHeader(String remoteIPHeader) {
-        this.remoteIPHeader = remoteIPHeader;
+    public void setProtocolHeader(String protocolHeader) {
+        this.protocolHeader = protocolHeader;
+    }
+    
+    /**
+     * <p>
+     * Case insensitive value of the protocol header to indicate that the incoming http request uses SSL.
+     * </p>
+     * <p>
+     * Default value : <code>HTTPS</code>
+     * </p>
+     */
+    public void setProtocolHeaderSslValue(String protocolHeaderSslValue) {
+        this.protocolHeaderSslValue = protocolHeaderSslValue;
     }
     
     /**
@@ -542,6 +610,23 @@ public class RemoteIpValve extends ValveBase {
     
     /**
      * <p>
+     * Name of the http header from which the remote ip is extracted.
+     * </p>
+     * <p>
+     * The value of this header can be comma delimited.
+     * </p>
+     * <p>
+     * Default value : <code>X-Forwarded-For</code>
+     * </p>
+     * 
+     * @param remoteIPHeader
+     */
+    public void setRemoteIPHeader(String remoteIPHeader) {
+        this.remoteIPHeader = remoteIPHeader;
+    }
+    
+    /**
+     * <p>
      * Comma delimited list of proxies that are trusted when they appear in the {@link #remoteIPHeader} header. Can be expressed as a
      * regular expression.
      * </p>
@@ -551,30 +636,5 @@ public class RemoteIpValve extends ValveBase {
      */
     public void setTrustedProxies(String commaDelimitedTrustedProxies) {
         this.trustedProxies = commaDelimitedListToPatternArray(commaDelimitedTrustedProxies);
-    }
-    
-    /**
-     * <p>
-     * Header that holds the incoming protocol, usally named <code>X-Forwarded-Proto</code>. If <code>null</code>, request.scheme and
-     * request.secure will not be modified.
-     * </p>
-     * <p>
-     * Default value : <code>null</code>
-     * </p>
-     */
-    public void setProtocolHeader(String protocolHeader) {
-        this.protocolHeader = protocolHeader;
-    }
-    
-    /**
-     * <p>
-     * Case insensitive value of the protocol header to indicate that the incoming http request uses SSL.
-     * </p>
-     * <p>
-     * Default value : <code>HTTPS</code>
-     * </p>
-     */
-    public void setProtocolHeaderSslValue(String protocolHeaderSslValue) {
-        this.protocolHeaderSslValue = protocolHeaderSslValue;
     }
 }
