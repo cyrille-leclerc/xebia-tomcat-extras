@@ -91,6 +91,19 @@ import org.apache.juli.logging.LogFactory;
  * <td>Comma delimited list of regular expressions (in the syntax supported by the {@link java.util.regex.Pattern} library)</td>
  * <td>&nbsp;</td>
  * </tr>
+ * <tr>
+ * <td>protocolHeader</td>
+ * <td>N/A</td>
+ * <td>Compliant http header string like <code>X-Forwarded-Pro</code></td>
+ * <td><code>null</code></td>
+ * </tr>
+ * <tr>
+ * <td>protocolHeaderSslValue</td>
+ * <td>N/A</td>
+ * <td>String like <code>https</code> or <code>ON</code></td>
+ * <td><code>https</code></td>
+ * </tr>
+ * <tr>
  * </table>
  * </p>
  * <p>
@@ -382,7 +395,7 @@ public class RemoteIpValve extends ValveBase {
      */
     private String protocolHeader = null;
     
-    private String protocolHeaderSslValue = "HTTPS";
+    private String protocolHeaderSslValue = "https";
     
     /**
      * @see #setProxiesHeader(String)
@@ -533,7 +546,7 @@ public class RemoteIpValve extends ValveBase {
             if (log.isDebugEnabled()) {
                 log.debug("Incoming request " + request.getRequestURI() + " with originalRemoteAddr '" + originalRemoteAddr
                           + "', originalRemoteHost='" + originalRemoteHost + "', originalSecure='" + originalSecure + "', originalScheme='"
-                          + originalScheme + " will be seen as newRemoteAddr='" + request.getRemoteAddr() + "', newRemoteHost='"
+                          + originalScheme + "' will be seen as newRemoteAddr='" + request.getRemoteAddr() + "', newRemoteHost='"
                           + request.getRemoteHost() + "', newScheme='" + request.getScheme() + "', newSecure='" + request.isSecure() + "'");
             }
         }
