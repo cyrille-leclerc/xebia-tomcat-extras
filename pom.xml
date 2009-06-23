@@ -6,9 +6,9 @@
    <packaging>jar</packaging>
    <description>Extras for Tomcat 6</description>
    <scm>
-      <connection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</connection>
-      <developerConnection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</developerConnection>
-      <url>https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/</url>
+      <connection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-0.5</connection>
+      <developerConnection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-0.5</developerConnection>
+      <url>https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-0.5</url>
    </scm>
    <build>
       <plugins>
@@ -29,7 +29,7 @@
          </plugin>
       </plugins>
    </build>
-   <version>0.5-SNAPSHOT</version>
+   <version>0.5</version>
    <dependencies>
       <dependency>
          <groupId>org.apache.tomcat</groupId>
