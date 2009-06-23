@@ -1,4 +1,21 @@
-package fr.xebia.catalina.valves;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ * 
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.catalina.connector;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -8,12 +25,15 @@ import java.util.regex.PatternSyntaxException;
 
 import javax.servlet.ServletException;
 
-import org.apache.catalina.connector.Request;
 import org.apache.catalina.connector.Response;
 import org.apache.catalina.valves.ValveBase;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
+/**
+ * Sets {@link RequestFacade#isSecure()} to <code>true</code> if {@link Request#getRemoteAddr()} matches one of the
+ * <code>securedRemoteAddresses</code> of this valve.
+ */
 public class SecuredRemoteAddressesValve extends ValveBase {
     
     /**
@@ -67,7 +87,7 @@ public class SecuredRemoteAddressesValve extends ValveBase {
      */
     private Pattern[] securedRemoteAddresses = new Pattern[] {
         Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"),
-        Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}")
+        Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
     };
     
     /**
@@ -75,24 +95,25 @@ public class SecuredRemoteAddressesValve extends ValveBase {
      */
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
-        final String originalScheme = request.getScheme();
-        final boolean originalSecure = request.isSecure();
+        final RequestFacade originalRequestFacade = request.facade;
         
-        if (matchesOne(request.getRemoteAddr(), securedRemoteAddresses)) {
-            request.setSecure(true);
-        }
+        final boolean secure = request.isSecure() || matchesOne(request.getRemoteAddr(), securedRemoteAddresses);
+        request.facade = new RequestFacade(request) {
+            @Override
+            public boolean isSecure() {
+                return secure;
+            }
+        };
         
         if (log.isDebugEnabled()) {
-            log.debug("Incoming request uri=" + request.getRequestURI() + " with originalScheme='" + originalScheme + "', originalSecure='"
-                      + originalSecure + "' will be seen as scheme='" + request.getScheme() + "', secure='" + request.isSecure() + "'");
+            log.debug("Incoming request uri=" + request.getRequestURI() + " with secure='" + request.isSecure() + "', remoteAddr='"
+                      + request.getRemoteAddr() + "' will be seen with requestFacade.secure='" + secure + "'");
         }
         
         try {
             getNext().invoke(request, response);
         } finally {
-            request.setSecure(originalSecure);
-            // use request.coyoteRequest.scheme instead of request.setScheme() because request.setScheme() is no-op in Tomcat 6.0
-            request.getCoyoteRequest().scheme().setString(originalScheme);
+            request.facade = originalRequestFacade;
         }
     }
     
