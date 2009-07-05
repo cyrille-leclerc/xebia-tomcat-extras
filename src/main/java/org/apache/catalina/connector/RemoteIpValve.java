@@ -325,7 +325,7 @@ public class RemoteIpValve extends ValveBase {
     /**
      * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
      * 
-     * @return array of pattenrs (not <code>null</code>)
+     * @return array of patterns (not <code>null</code>)
      */
     protected static Pattern[] commaDelimitedListToPatternArray(String commaDelimitedPatterns) {
         String[] patterns = commaDelimitedListToStringArray(commaDelimitedPatterns);
