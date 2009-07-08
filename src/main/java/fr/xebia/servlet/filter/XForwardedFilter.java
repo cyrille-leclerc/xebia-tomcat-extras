@@ -53,18 +53,6 @@ import org.apache.juli.logging.LogFactory;
  */
 public class XForwardedFilter implements Filter {
     
-    protected static final String TRUSTED_PROXIES_PARAMETER = "TrustedProxies";
-
-    protected static final String REMOTE_IP_HEADER_PARAMETER = "RemoteIPHeader";
-
-    protected static final String PROXIES_HEADER_PARAMETER = "ProxiesHeader";
-
-    protected static final String PROTOCOL_HEADER_SSL_VALUE_PARAMETER = "ProtocolHeaderSslValue";
-
-    protected static final String PROTOCOL_HEADER_PARAMETER = "ProtocolHeader";
-
-    protected static final String INTERNAL_PROXIES_PARAMETER = "InternalProxies";
-
     public static class XForwardedRequest extends HttpServletRequestWrapper {
         
         final static ThreadLocal<SimpleDateFormat[]> threadLocalDateFormats = new ThreadLocal<SimpleDateFormat[]>() {
@@ -202,16 +190,28 @@ public class XForwardedFilter implements Filter {
             this.secure = secure;
         }
     }
-    
+
     /**
      * {@link Pattern} for a comma delimited string that support whitespace characters
      */
     private static final Pattern commaSeparatedValuesPattern = Pattern.compile("\\s*,\\s*");
-    
+
+    protected static final String INTERNAL_PROXIES_PARAMETER = "InternalProxies";
+
     /**
      * Logger
      */
     private static Log log = LogFactory.getLog(XForwardedFilter.class);
+
+    protected static final String PROTOCOL_HEADER_PARAMETER = "ProtocolHeader";
+
+    protected static final String PROTOCOL_HEADER_SSL_VALUE_PARAMETER = "ProtocolHeaderSslValue";
+
+    protected static final String PROXIES_HEADER_PARAMETER = "ProxiesHeader";
+    
+    protected static final String REMOTE_IP_HEADER_PARAMETER = "RemoteIPHeader";
+    
+    protected static final String TRUSTED_PROXIES_PARAMETER = "TrustedProxies";
     
     /**
      * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
