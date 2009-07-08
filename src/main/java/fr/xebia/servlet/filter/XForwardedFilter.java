@@ -47,12 +47,24 @@ import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 /**
- * Servlet filter to integrate "X-Forwarded-For" and "X-Forwarded-Proto" HYYP headers.
+ * Servlet filter to integrate "X-Forwarded-For" and "X-Forwarded-Proto" HTTP headers.
  * 
  * @author <a href="mailto:cyrille.leclerc@pobox.com">Cyrille Le Clerc</a>
  */
-public class XForwardedForFilter implements Filter {
+public class XForwardedFilter implements Filter {
     
+    protected static final String TRUSTED_PROXIES_PARAMETER = "TrustedProxies";
+
+    protected static final String REMOTE_IP_HEADER_PARAMETER = "RemoteIPHeader";
+
+    protected static final String PROXIES_HEADER_PARAMETER = "ProxiesHeader";
+
+    protected static final String PROTOCOL_HEADER_SSL_VALUE_PARAMETER = "ProtocolHeaderSslValue";
+
+    protected static final String PROTOCOL_HEADER_PARAMETER = "ProtocolHeader";
+
+    protected static final String INTERNAL_PROXIES_PARAMETER = "InternalProxies";
+
     public static class XForwardedRequest extends HttpServletRequestWrapper {
         
         final static ThreadLocal<SimpleDateFormat[]> threadLocalDateFormats = new ThreadLocal<SimpleDateFormat[]>() {
@@ -199,7 +211,7 @@ public class XForwardedForFilter implements Filter {
     /**
      * Logger
      */
-    private static Log log = LogFactory.getLog(XForwardedForFilter.class);
+    private static Log log = LogFactory.getLog(XForwardedFilter.class);
     
     /**
      * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
@@ -401,28 +413,28 @@ public class XForwardedForFilter implements Filter {
     }
     
     public void init(FilterConfig filterConfig) throws ServletException {
-        if (filterConfig.getInitParameter("InternalProxies") != null) {
-            this.internalProxies = commaDelimitedListToPatternArray(filterConfig.getInitParameter("InternalProxies"));
+        if (filterConfig.getInitParameter(INTERNAL_PROXIES_PARAMETER) != null) {
+            this.internalProxies = commaDelimitedListToPatternArray(filterConfig.getInitParameter(INTERNAL_PROXIES_PARAMETER));
         }
         
-        if (filterConfig.getInitParameter("ProtocolHeader") != null) {
-            this.protocolHeader = filterConfig.getInitParameter("ProtocolHeader");
+        if (filterConfig.getInitParameter(PROTOCOL_HEADER_PARAMETER) != null) {
+            this.protocolHeader = filterConfig.getInitParameter(PROTOCOL_HEADER_PARAMETER);
         }
         
-        if (filterConfig.getInitParameter("ProtocolHeaderSslValue") != null) {
-            this.protocolHeaderSslValue = filterConfig.getInitParameter("ProtocolHeaderSslValue");
+        if (filterConfig.getInitParameter(PROTOCOL_HEADER_SSL_VALUE_PARAMETER) != null) {
+            this.protocolHeaderSslValue = filterConfig.getInitParameter(PROTOCOL_HEADER_SSL_VALUE_PARAMETER);
         }
         
-        if (filterConfig.getInitParameter("ProxiesHeader") != null) {
-            this.proxiesHeader = filterConfig.getInitParameter("ProxiesHeader");
+        if (filterConfig.getInitParameter(PROXIES_HEADER_PARAMETER) != null) {
+            this.proxiesHeader = filterConfig.getInitParameter(PROXIES_HEADER_PARAMETER);
         }
         
-        if (filterConfig.getInitParameter("RemoteIPHeader") != null) {
-            this.remoteIPHeader = filterConfig.getInitParameter("RemoteIPHeader");
+        if (filterConfig.getInitParameter(REMOTE_IP_HEADER_PARAMETER) != null) {
+            this.remoteIPHeader = filterConfig.getInitParameter(REMOTE_IP_HEADER_PARAMETER);
         }
         
-        if (filterConfig.getInitParameter("TrustedProxies") != null) {
-            this.trustedProxies = commaDelimitedListToPatternArray(filterConfig.getInitParameter("TrustedProxies"));
+        if (filterConfig.getInitParameter(TRUSTED_PROXIES_PARAMETER) != null) {
+            this.trustedProxies = commaDelimitedListToPatternArray(filterConfig.getInitParameter(TRUSTED_PROXIES_PARAMETER));
         }
         
     }

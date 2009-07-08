@@ -1,10 +1,12 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
    <modelVersion>4.0.0</modelVersion>
    <name>xebia-tomcat-extras</name>
    <groupId>fr.xebia.tomcat.extras</groupId>
    <artifactId>xebia-tomcat-extras</artifactId>
    <packaging>jar</packaging>
    <description>Extras for Tomcat 6</description>
+   <version>0.6-SNAPSHOT</version>
    <scm>
       <connection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</connection>
       <developerConnection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</developerConnection>
@@ -23,13 +25,32 @@
          <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-release-plugin</artifactId>
-            <configuration>
-               <goals>install</goals>
-            </configuration>
          </plugin>
       </plugins>
+      <extensions>
+         <extension>
+            <groupId>org.apache.maven.wagon</groupId>
+            <artifactId>wagon-scm</artifactId>
+            <version>1.0-beta-6</version>
+         </extension>
+         <extension>
+            <groupId>org.apache.maven.scm</groupId>
+            <artifactId>maven-scm-manager-plexus</artifactId>
+            <version>1.2</version>
+         </extension>
+         <extension>
+            <groupId>org.apache.maven.scm</groupId>
+            <artifactId>maven-scm-provider-svnexe</artifactId>
+            <version>1.2</version>
+         </extension>
+      </extensions>
    </build>
-   <version>0.6-SNAPSHOT</version>
+   <distributionManagement>
+      <site>
+         <id>xebia-france.googlecode.com</id>
+         <url>scm:svn:https://xebia-france.googlecode.com/svn/repository/maven2/</url>
+      </site>
+   </distributionManagement>
    <dependencies>
       <dependency>
          <groupId>org.apache.tomcat</groupId>
@@ -72,9 +93,22 @@
          <version>4.6</version>
          <scope>test</scope>
       </dependency>
+      <dependency>
+         <groupId>org.springframework</groupId>
+         <artifactId>spring-core</artifactId>
+         <version>${springframework.version}</version>
+         <scope>test</scope>
+      </dependency>
+      <dependency>
+         <groupId>org.springframework</groupId>
+         <artifactId>spring-test</artifactId>
+         <version>${springframework.version}</version>
+         <scope>test</scope>
+      </dependency>
    </dependencies>
    <properties>
       <tomcat.version>6.0.18</tomcat.version>
+      <springframework.version>2.5.6</springframework.version>
       <project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
    </properties>
 </project>
