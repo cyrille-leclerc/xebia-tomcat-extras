@@ -21,6 +21,11 @@
                <target>1.5</target>
             </configuration>
          </plugin>
+         <plugin>
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus-utils</artifactId>
+            <version>1.5.15</version>
+        </plugin>
       </plugins>
       <extensions>
          <extension>
