@@ -42,12 +42,267 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.catalina.connector.RemoteIpValve;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
+ * <p>
  * Servlet filter to integrate "X-Forwarded-For" and "X-Forwarded-Proto" HTTP headers.
+ * </p>
+ * <p>
+ * Tomcat port of <a href="http://httpd.apache.org/docs/trunk/mod/mod_remoteip.html">mod_remoteip</a>, this filter replaces the apparent
+ * client remote IP address and hostname for the request with the IP address list presented by a proxy or a load balancer via a request
+ * headers.
+ * </p>
+ * <p>
+ * This valve proceeds as follows:
+ * <ul>
+ * <li>Check if the incoming <code>request.getRemoteAddr()</code> matches the valve's list of internal proxies.</li>
+ * <li>If so, loop on the comma delimited list of IPs and hostnames passed by the preceding load balancer or proxy in the given request's
+ * Http header named <code>remoteIPHeader</code> (default value <code>x-forwarded-for</code>). Values are processed in Right-to-Left order.</li>
+ * <li>For each ip/host of the list:
+ * <ul>
+ * <li>if it matches the internal proxies list, the ip/host is swallowed</li>
+ * <li>if it matches the trusted proxies list, the ip/host is added to the created proxies header</li>
+ * <li>otherwise, the ip/host is declared to be the remote ip and looping is stopped.</li>
+ * </ul>
+ * </li>
+ * </ul>
+ * </p>
+ * <p>
+ * <strong>Configuration parameters:</strong>
+ * <table border="1">
+ * <tr>
+ * <th>RemoteIpValve property</th>
+ * <th>Equivalent mod_remoteip directive</th>
+ * <th>Format</th>
+ * <th>Default Value</th>
+ * </tr>
+ * <tr>
+ * <td>remoteIPHeader</td>
+ * <td>RemoteIPHeader</td>
+ * <td>Compliant http header string</td>
+ * <td>x-forwarded-for</td>
+ * </tr>
+ * <tr>
+ * <td>internalProxies</td>
+ * <td>RemoteIPInternalProxy</td>
+ * <td>Comma delimited list of regular expressions (in the syntax supported by the {@link java.util.regex.Pattern} library)</td>
+ * <td>10\.\d{1,3}\.\d{1,3}\.\d{1,3}, 192\.168\.\d{1,3}\.\d{1,3}, 169\.254\.\d{1,3}\.\d{1,3}, 127\.\d{1,3}\.\d{1,3}\.\d{1,3} <br/>
+ * By default, 10/8, 192.168/16, 169.254/16 and 127/8 are allowed ; 172.16/12 has not been enabled by default because it is complex to
+ * describe with regular expressions</td>
+ * </tr>
+ * </tr>
+ * <tr>
+ * <td>proxiesHeader</td>
+ * <td>RemoteIPProxiesHeader</td>
+ * <td>Compliant http header String</td>
+ * <td>x-forwarded-by</td>
+ * </tr>
+ * <tr>
+ * <td>trustedProxies</td>
+ * <td>RemoteIPTrustedProxy</td>
+ * <td>Comma delimited list of regular expressions (in the syntax supported by the {@link java.util.regex.Pattern} library)</td>
+ * <td>&nbsp;</td>
+ * </tr>
+ * <tr>
+ * <td>protocolHeader</td>
+ * <td>N/A</td>
+ * <td>Compliant http header string like <code>X-Forwarded-Pro</code></td>
+ * <td><code>null</code></td>
+ * </tr>
+ * <tr>
+ * <td>protocolHeaderSslValue</td>
+ * <td>N/A</td>
+ * <td>String like <code>https</code> or <code>ON</code></td>
+ * <td><code>https</code></td>
+ * </tr>
+ * <tr>
+ * </table>
+ * </p>
+ * <p>
+ * <p>
+ * This Valve may be attached to any Container, depending on the granularity of the filtering you wish to perform.
+ * </p>
+ * <p>
+ * <strong>Regular expression vs. IP address blocks:</strong> <code>mod_remoteip</code> allows to use address blocks (e.g.
+ * <code>192.168/16</code>) to configure <code>RemoteIPInternalProxy</code> and <code>RemoteIPTrustedProxy</code> ; as Tomcat doesn't have a
+ * library similar to <a
+ * href="http://apr.apache.org/docs/apr/1.3/group__apr__network__io.html#gb74d21b8898b7c40bf7fd07ad3eb993d">apr_ipsubnet_test</a>,
+ * <code>RemoteIpValve</code> uses regular expression to configure <code>internalProxies</code> and <code>trustedProxies</code> in the same
+ * fashion as {@link org.apache.catalina.valves.RequestFilterValve} does.
+ * </p>
+ * <hr/>
+ * <p>
+ * <strong>Sample with trusted proxies</strong>
+ * </p>
+ * <p>
+ * RemoteIpValve configuration:
+ * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   trustedProxies="proxy1, proxy2"
+ *   /&gt;</pre></code>
+ * <p>
+ * Request values:
+ * <table border="1">
+ * <tr>
+ * <th>property</th>
+ * <th>Value Before RemoteIpValve</th>
+ * <th>Value After RemoteIpValve</th>
+ * </tr>
+ * <tr>
+ * <td>request.remoteAddr</td>
+ * <td>192.168.0.10</td>
+ * <td>140.211.11.130</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-for']</td>
+ * <td>140.211.11.130, proxy1, proxy2</td>
+ * <td>null</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-by']</td>
+ * <td>null</td>
+ * <td>proxy1, proxy2</td>
+ * </tr>
+ * </table>
+ * Note : <code>proxy1</code> and <code>proxy2</code> are both trusted proxies that come in <code>x-forwarded-for</code> header, they both
+ * are migrated in <code>x-forwarded-by</code> header. <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
+ * </p>
+ * <hr/>
+ * <p>
+ * <strong>Sample with internal and trusted proxies</strong>
+ * </p>
+ * <p>
+ * RemoteIpValve configuration:
+ * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   trustedProxies="proxy1, proxy2"
+ *   /&gt;</pre></code>
+ * <p>
+ * Request values:
+ * <table border="1">
+ * <tr>
+ * <th>property</th>
+ * <th>Value Before RemoteIpValve</th>
+ * <th>Value After RemoteIpValve</th>
+ * </tr>
+ * <tr>
+ * <td>request.remoteAddr</td>
+ * <td>192.168.0.10</td>
+ * <td>140.211.11.130</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-for']</td>
+ * <td>140.211.11.130, proxy1, proxy2, 192.168.0.10</td>
+ * <td>null</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-by']</td>
+ * <td>null</td>
+ * <td>proxy1, proxy2</td>
+ * </tr>
+ * </table>
+ * Note : <code>proxy1</code> and <code>proxy2</code> are both trusted proxies that come in <code>x-forwarded-for</code> header, they both
+ * are migrated in <code>x-forwarded-by</code> header. As <code>192.168.0.10</code> is an internal proxy, it does not appear in
+ * <code>x-forwarded-by</code>. <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
+ * </p>
+ * <hr/>
+ * <p>
+ * <strong>Sample with internal proxies</strong>
+ * </p>
+ * <p>
+ * RemoteIpValve configuration:
+ * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   /&gt;</pre></code>
+ * <p>
+ * Request values:
+ * <table border="1">
+ * <tr>
+ * <th>property</th>
+ * <th>Value Before RemoteIpValve</th>
+ * <th>Value After RemoteIpValve</th>
+ * </tr>
+ * <tr>
+ * <td>request.remoteAddr</td>
+ * <td>192.168.0.10</td>
+ * <td>140.211.11.130</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-for']</td>
+ * <td>140.211.11.130, 192.168.0.10</td>
+ * <td>null</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-by']</td>
+ * <td>null</td>
+ * <td>null</td>
+ * </tr>
+ * </table>
+ * Note : <code>x-forwarded-by</code> header is null because only internal proxies as been traversed by the request.
+ * <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
+ * </p>
+ * <hr/>
+ * <p>
+ * <strong>Sample with an untrusted proxy</strong>
+ * </p>
+ * <p>
+ * RemoteIpValve configuration:
+ * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   trustedProxies="proxy1, proxy2"
+ *   /&gt;</pre></code>
+ * <p>
+ * Request values:
+ * <table border="1">
+ * <tr>
+ * <th>property</th>
+ * <th>Value Before RemoteIpValve</th>
+ * <th>Value After RemoteIpValve</th>
+ * </tr>
+ * <tr>
+ * <td>request.remoteAddr</td>
+ * <td>192.168.0.10</td>
+ * <td>untrusted-proxy</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-for']</td>
+ * <td>140.211.11.130, untrusted-proxy, proxy1</td>
+ * <td>140.211.11.130</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-by']</td>
+ * <td>null</td>
+ * <td>proxy1</td>
+ * </tr>
+ * </table>
+ * Note : <code>x-forwarded-by</code> holds the trusted proxy <code>proxy1</code>. <code>x-forwarded-by</code> holds
+ * <code>140.211.11.130</code> because <code>untrusted-proxy</code> is not trusted and thus, we can not trust that
+ * <code>untrusted-proxy</code> is the actual remote ip. <code>request.remoteAddr</code> is <code>untrusted-proxy</code> that is an IP
+ * verified by <code>proxy1</code>.
+ * </p>
+ * <hr/>
  * 
  * @author <a href="mailto:cyrille.leclerc@pobox.com">Cyrille Le Clerc</a>
  */
@@ -190,23 +445,23 @@ public class XForwardedFilter implements Filter {
             this.secure = secure;
         }
     }
-
+    
     /**
      * {@link Pattern} for a comma delimited string that support whitespace characters
      */
     private static final Pattern commaSeparatedValuesPattern = Pattern.compile("\\s*,\\s*");
-
+    
     protected static final String INTERNAL_PROXIES_PARAMETER = "InternalProxies";
-
+    
     /**
      * Logger
      */
-    private static Log log = LogFactory.getLog(XForwardedFilter.class);
-
+    private static final Logger logger = LoggerFactory.getLogger(XForwardedFilter.class);
+    
     protected static final String PROTOCOL_HEADER_PARAMETER = "ProtocolHeader";
-
+    
     protected static final String PROTOCOL_HEADER_SSL_VALUE_PARAMETER = "ProtocolHeaderSslValue";
-
+    
     protected static final String PROXIES_HEADER_PARAMETER = "ProxiesHeader";
     
     protected static final String REMOTE_IP_HEADER_PARAMETER = "RemoteIPHeader";
@@ -299,7 +554,7 @@ public class XForwardedFilter implements Filter {
     private String remoteIPHeader = "X-Forwarded-For";
     
     /**
-     * @see RemoteIpValve#setTrustedProxies(String)
+     * @see #setTrustedProxies(String)
      */
     private Pattern[] trustedProxies = new Pattern[0];
     
@@ -363,8 +618,8 @@ public class XForwardedFilter implements Filter {
                 }
             }
             
-            if (log.isDebugEnabled()) {
-                log.debug("Incoming request " + request.getRequestURI() + " with originalRemoteAddr '" + request.getRemoteAddr()
+            if (logger.isDebugEnabled()) {
+                logger.debug("Incoming request " + request.getRequestURI() + " with originalRemoteAddr '" + request.getRemoteAddr()
                           + "', originalRemoteHost='" + request.getRemoteHost() + "', originalSecure='" + request.isSecure()
                           + "', originalScheme='" + request.getScheme() + "' will be seen as newRemoteAddr='" + xRequest.getRemoteAddr()
                           + "', newRemoteHost='" + xRequest.getRemoteHost() + "', newScheme='" + xRequest.getScheme() + "', newSecure='"
@@ -414,29 +669,113 @@ public class XForwardedFilter implements Filter {
     
     public void init(FilterConfig filterConfig) throws ServletException {
         if (filterConfig.getInitParameter(INTERNAL_PROXIES_PARAMETER) != null) {
-            this.internalProxies = commaDelimitedListToPatternArray(filterConfig.getInitParameter(INTERNAL_PROXIES_PARAMETER));
+            setInternalProxies(filterConfig.getInitParameter(INTERNAL_PROXIES_PARAMETER));
         }
         
         if (filterConfig.getInitParameter(PROTOCOL_HEADER_PARAMETER) != null) {
-            this.protocolHeader = filterConfig.getInitParameter(PROTOCOL_HEADER_PARAMETER);
+            setProtocolHeader(filterConfig.getInitParameter(PROTOCOL_HEADER_PARAMETER));
         }
         
         if (filterConfig.getInitParameter(PROTOCOL_HEADER_SSL_VALUE_PARAMETER) != null) {
-            this.protocolHeaderSslValue = filterConfig.getInitParameter(PROTOCOL_HEADER_SSL_VALUE_PARAMETER);
+            setProtocolHeaderSslValue(filterConfig.getInitParameter(PROTOCOL_HEADER_SSL_VALUE_PARAMETER));
         }
         
         if (filterConfig.getInitParameter(PROXIES_HEADER_PARAMETER) != null) {
-            this.proxiesHeader = filterConfig.getInitParameter(PROXIES_HEADER_PARAMETER);
+            setProxiesHeader(filterConfig.getInitParameter(PROXIES_HEADER_PARAMETER));
         }
         
         if (filterConfig.getInitParameter(REMOTE_IP_HEADER_PARAMETER) != null) {
-            this.remoteIPHeader = filterConfig.getInitParameter(REMOTE_IP_HEADER_PARAMETER);
+            setRemoteIPHeader(filterConfig.getInitParameter(REMOTE_IP_HEADER_PARAMETER));
         }
         
         if (filterConfig.getInitParameter(TRUSTED_PROXIES_PARAMETER) != null) {
-            this.trustedProxies = commaDelimitedListToPatternArray(filterConfig.getInitParameter(TRUSTED_PROXIES_PARAMETER));
+            setTrustedProxies(filterConfig.getInitParameter(TRUSTED_PROXIES_PARAMETER));
         }
         
     }
     
+    /**
+     * <p>
+     * Comma delimited list of internal proxies. Can be expressed with regular expressions.
+     * </p>
+     * <p>
+     * Default value : 10\.\d{1,3}\.\d{1,3}\.\d{1,3}, 192\.168\.\d{1,3}\.\d{1,3}, 127\.\d{1,3}\.\d{1,3}\.\d{1,3}
+     * </p>
+     */
+    public void setInternalProxies(String internalProxies) {
+        this.internalProxies = commaDelimitedListToPatternArray(internalProxies);
+    }
+    
+    /**
+     * <p>
+     * Header that holds the incoming protocol, usally named <code>X-Forwarded-Proto</code>. If <code>null</code>, request.scheme and
+     * request.secure will not be modified.
+     * </p>
+     * <p>
+     * Default value : <code>null</code>
+     * </p>
+     */
+    public void setProtocolHeader(String protocolHeader) {
+        this.protocolHeader = protocolHeader;
+    }
+    
+    /**
+     * <p>
+     * Case insensitive value of the protocol header to indicate that the incoming http request uses SSL.
+     * </p>
+     * <p>
+     * Default value : <code>HTTPS</code>
+     * </p>
+     */
+    public void setProtocolHeaderSslValue(String protocolHeaderSslValue) {
+        this.protocolHeaderSslValue = protocolHeaderSslValue;
+    }
+    
+    /**
+     * <p>
+     * The proxiesHeader directive specifies a header into which mod_remoteip will collect a list of all of the intermediate client IP
+     * addresses trusted to resolve the actual remote IP. Note that intermediate RemoteIPTrustedProxy addresses are recorded in this header,
+     * while any intermediate RemoteIPInternalProxy addresses are discarded.
+     * </p>
+     * <p>
+     * Name of the http header that holds the list of trusted proxies that has been traversed by the http request.
+     * </p>
+     * <p>
+     * The value of this header can be comma delimited.
+     * </p>
+     * <p>
+     * Default value : <code>X-Forwarded-By</code>
+     * </p>
+     */
+    public void setProxiesHeader(String proxiesHeader) {
+        this.proxiesHeader = proxiesHeader;
+    }
+    
+    /**
+     * <p>
+     * Name of the http header from which the remote ip is extracted.
+     * </p>
+     * <p>
+     * The value of this header can be comma delimited.
+     * </p>
+     * <p>
+     * Default value : <code>X-Forwarded-For</code>
+     * </p>
+     */
+    public void setRemoteIPHeader(String remoteIPHeader) {
+        this.remoteIPHeader = remoteIPHeader;
+    }
+    
+    /**
+     * <p>
+     * Comma delimited list of proxies that are trusted when they appear in the {@link #remoteIPHeader} header. Can be expressed as a
+     * regular expression.
+     * </p>
+     * <p>
+     * Default value : empty list, no external proxy is trusted.
+     * </p>
+     */
+    public void setTrustedProxies(String trustedProxies) {
+        this.trustedProxies = commaDelimitedListToPatternArray(trustedProxies);
+    }
 }
