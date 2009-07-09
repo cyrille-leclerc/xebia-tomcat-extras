@@ -41,10 +41,10 @@
       </extensions>
    </build>
    <distributionManagement>
-      <site>
+      <repository>
          <id>xebia-france.googlecode.com</id>
          <url>scm:svn:https://xebia-france.googlecode.com/svn/repository/maven2/</url>
-      </site>
+      </repository>
    </distributionManagement>
    <dependencies>
       <dependency>
