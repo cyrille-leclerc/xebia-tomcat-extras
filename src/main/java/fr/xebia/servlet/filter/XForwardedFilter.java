@@ -331,6 +331,8 @@ public class XForwardedFilter implements Filter {
         
         protected boolean secure;
         
+        protected int serverPort;
+        
         @SuppressWarnings("unchecked")
         public XForwardedRequest(HttpServletRequest request) {
             super(request);
@@ -338,6 +340,7 @@ public class XForwardedFilter implements Filter {
             this.remoteHost = request.getRemoteHost();
             this.scheme = request.getScheme();
             this.secure = request.isSecure();
+            this.serverPort = request.getServerPort();
             
             headers = new HashMap<String, List<String>>();
             for (Enumeration<String> headerNames = request.getHeaderNames(); headerNames.hasMoreElements();) {
@@ -417,6 +420,10 @@ public class XForwardedFilter implements Filter {
             return scheme;
         }
         
+        public int getServerPort() {
+            return serverPort;
+        }
+        
         public boolean isSecure() {
             return secure;
         }
@@ -444,6 +451,10 @@ public class XForwardedFilter implements Filter {
         public void setSecure(boolean secure) {
             this.secure = secure;
         }
+        
+        public void setServerPort(int serverPort) {
+            this.serverPort = serverPort;
+        }
     }
     
     /**
@@ -467,6 +478,8 @@ public class XForwardedFilter implements Filter {
     protected static final String REMOTE_IP_HEADER_PARAMETER = "RemoteIPHeader";
     
     protected static final String TRUSTED_PROXIES_PARAMETER = "TrustedProxies";
+    
+    protected static final String HTTPS_SERVER_PORT_PARAMETER = "httpsServerPort";
     
     /**
      * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
@@ -527,6 +540,11 @@ public class XForwardedFilter implements Filter {
         }
         return false;
     }
+    
+    /**
+     * @see #setHttpsServerPort(int)
+     */
+    private int httpsServerPort = 443;
     
     /**
      * @see #setInternalProxies(String)
@@ -615,15 +633,16 @@ public class XForwardedFilter implements Filter {
                 if (protocolHeaderValue != null && protocolHeaderSslValue.equalsIgnoreCase(protocolHeaderValue)) {
                     xRequest.setSecure(true);
                     xRequest.setScheme("https");
+                    xRequest.setServerPort(httpsServerPort);
                 }
             }
             
             if (logger.isDebugEnabled()) {
                 logger.debug("Incoming request " + request.getRequestURI() + " with originalRemoteAddr '" + request.getRemoteAddr()
-                          + "', originalRemoteHost='" + request.getRemoteHost() + "', originalSecure='" + request.isSecure()
-                          + "', originalScheme='" + request.getScheme() + "' will be seen as newRemoteAddr='" + xRequest.getRemoteAddr()
-                          + "', newRemoteHost='" + xRequest.getRemoteHost() + "', newScheme='" + xRequest.getScheme() + "', newSecure='"
-                          + xRequest.isSecure() + "'");
+                             + "', originalRemoteHost='" + request.getRemoteHost() + "', originalSecure='" + request.isSecure()
+                             + "', originalScheme='" + request.getScheme() + "' will be seen as newRemoteAddr='" + xRequest.getRemoteAddr()
+                             + "', newRemoteHost='" + xRequest.getRemoteHost() + "', newScheme='" + xRequest.getScheme() + "', newSecure='"
+                             + xRequest.isSecure() + "'");
             }
             chain.doFilter(xRequest, response);
         } else {
@@ -641,6 +660,10 @@ public class XForwardedFilter implements Filter {
         } else {
             chain.doFilter(request, response);
         }
+    }
+    
+    public int getHttpsServerPort() {
+        return httpsServerPort;
     }
     
     public Pattern[] getInternalProxies() {
@@ -692,6 +715,25 @@ public class XForwardedFilter implements Filter {
             setTrustedProxies(filterConfig.getInitParameter(TRUSTED_PROXIES_PARAMETER));
         }
         
+        if (filterConfig.getInitParameter(HTTPS_SERVER_PORT_PARAMETER) != null) {
+            try {
+                setHttpsServerPort(Integer.parseInt(filterConfig.getInitParameter(HTTPS_SERVER_PORT_PARAMETER)));
+            } catch (NumberFormatException e) {
+                throw new NumberFormatException("Illegal serverPort : " + e.getMessage());
+            }
+        }        
+    }
+    
+    /**
+     * <p>
+     * Server Port value if the {@link #protocolHeader} indicates HTTPS
+     * </p>
+     * <p>
+     * Default value : 443
+     * </p>
+     */
+    public void setHttpsServerPort(int httpsServerPort) {
+        this.httpsServerPort = httpsServerPort;
     }
     
     /**

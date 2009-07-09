@@ -383,6 +383,11 @@ public class RemoteIpValve extends ValveBase {
     }
     
     /**
+     * @see #setHttpsServerPort(int)
+     */
+    private int httpsServerPort = 443;
+    
+    /**
      * @see #setInternalProxies(String)
      */
     private Pattern[] internalProxies = new Pattern[] {
@@ -395,6 +400,9 @@ public class RemoteIpValve extends ValveBase {
      */
     private String protocolHeader = null;
     
+    /**
+     * @see #setProtocolHeaderSslValue(String)
+     */
     private String protocolHeaderSslValue = "https";
     
     /**
@@ -411,6 +419,10 @@ public class RemoteIpValve extends ValveBase {
      * @see RemoteIpValve#setTrustedProxies(String)
      */
     private Pattern[] trustedProxies = new Pattern[0];
+    
+    public int getHttpsServerPort() {
+        return httpsServerPort;
+    }
     
     /**
      * Return descriptive information about this Valve implementation.
@@ -484,6 +496,7 @@ public class RemoteIpValve extends ValveBase {
         final String originalRemoteHost = request.getRemoteHost();
         final String originalScheme = request.getScheme();
         final boolean originalSecure = request.isSecure();
+        final int originalServerPort = request.getServerPort();
         
         if (matchesOne(originalRemoteAddr, internalProxies)) {
             String remoteIp = null;
@@ -540,6 +553,8 @@ public class RemoteIpValve extends ValveBase {
                     request.setSecure(true);
                     // use request.coyoteRequest.scheme instead of request.setScheme() because request.setScheme() is no-op in Tomcat 6.0
                     request.getCoyoteRequest().scheme().setString("https");
+                    
+                    request.setServerPort(httpsServerPort);
                 }
             }
             
@@ -561,7 +576,21 @@ public class RemoteIpValve extends ValveBase {
             
             // use request.coyoteRequest.scheme instead of request.setScheme() because request.setScheme() is no-op in Tomcat 6.0
             request.getCoyoteRequest().scheme().setString(originalScheme);
+            
+            request.setServerPort(originalServerPort);
         }
+    }
+    
+    /**
+     * <p>
+     * Server Port value if the {@link #protocolHeader} indicates HTTPS
+     * </p>
+     * <p>
+     * Default value : 443
+     * </p>
+     */
+    public void setHttpsServerPort(int httpsServerPort) {
+        this.httpsServerPort = httpsServerPort;
     }
     
     /**
