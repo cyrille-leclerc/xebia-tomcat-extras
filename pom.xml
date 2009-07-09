@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
    <modelVersion>4.0.0</modelVersion>
    <name>xebia-tomcat-extras</name>
    <groupId>fr.xebia.tomcat.extras</groupId>
@@ -38,7 +39,12 @@
             <artifactId>maven-scm-provider-svnexe</artifactId>
             <version>1.2</version>
          </extension>
-      </extensions>
+         <extension>
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus-utils</artifactId>
+            <version>1.5.15</version>
+         </extension>   
+      </extensions>      
    </build>
    <distributionManagement>
       <site>
