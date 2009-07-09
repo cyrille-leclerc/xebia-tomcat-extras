@@ -21,11 +21,6 @@
                <target>1.5</target>
             </configuration>
          </plugin>
-         <plugin>
-            <groupId>org.codehaus.plexus</groupId>
-            <artifactId>plexus-utils</artifactId>
-            <version>1.5.15</version>
-        </plugin>
       </plugins>
       <extensions>
          <extension>
@@ -43,7 +38,17 @@
             <artifactId>maven-scm-provider-svnexe</artifactId>
             <version>1.2</version>
          </extension>
-      </extensions>
+         <extension>
+            <!--
+               upgrade for 
+               java.lang.NoSuchMethodError: org.codehaus.plexus.util.cli.Commandline.createArg()Lorg/codehaus/plexus/util/cli/Arg;
+               at org.apache.maven.scm.provider.svn.svnexe.command.SvnCommandLineUtils.getBaseSvnCommandLine(SvnCommandLineUtils.java:122)
+            -->
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus-utils</artifactId>
+            <version>1.5.15</version>
+         </extension>
+     </extensions>
    </build>
    <distributionManagement>
       <repository>
