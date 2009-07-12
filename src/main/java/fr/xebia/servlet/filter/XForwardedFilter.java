@@ -50,16 +50,22 @@ import org.slf4j.LoggerFactory;
  * Servlet filter to integrate "X-Forwarded-For" and "X-Forwarded-Proto" HTTP headers.
  * </p>
  * <p>
- * Tomcat port of <a href="http://httpd.apache.org/docs/trunk/mod/mod_remoteip.html">mod_remoteip</a>, this filter replaces the apparent
+ * Most of the design of this Servlet Filter is a port of <a href="http://httpd.apache.org/docs/trunk/mod/mod_remoteip.html">mod_remoteip</a>, this servlet filter replaces the apparent
  * client remote IP address and hostname for the request with the IP address list presented by a proxy or a load balancer via a request
- * headers.
+ * headers (e.g. "X-Forwarded-For").
  * </p>
  * <p>
- * This valve proceeds as follows:
+ * Another feature of this servlet filter is to replace the apparent scheme (http/https) and server port with the scheme presented by a proxy or a
+ * load balancer via a request header (e.g. "X-Forwarded-Proto").
+ * </p>
+ * <p>
+ * This servlet filter proceeds as follows:
+ * </p>
+ * <p>
+ * If the incoming <code>request.getRemoteAddr()</code> matches the servlet filter's list of internal proxies :
  * <ul>
- * <li>Check if the incoming <code>request.getRemoteAddr()</code> matches the valve's list of internal proxies.</li>
- * <li>If so, loop on the comma delimited list of IPs and hostnames passed by the preceding load balancer or proxy in the given request's
- * Http header named <code>remoteIPHeader</code> (default value <code>x-forwarded-for</code>). Values are processed in Right-to-Left order.</li>
+ * <li>Loop on the comma delimited list of IPs and hostnames passed by the preceding load balancer or proxy in the given request's Http
+ * header named <code>$remoteIPHeader</code> (default value <code>x-forwarded-for</code>). Values are processed in right-to-left order.</li>
  * <li>For each ip/host of the list:
  * <ul>
  * <li>if it matches the internal proxies list, the ip/host is swallowed</li>
@@ -67,6 +73,10 @@ import org.slf4j.LoggerFactory;
  * <li>otherwise, the ip/host is declared to be the remote ip and looping is stopped.</li>
  * </ul>
  * </li>
+ * <li>If the request http header named <code>$protocolHeader</code> (e.g. <code>x-forwarded-for</code>) equals to the value of
+ * <code>protocolHeaderHttpsValue</code> configuration parameter (default <code>https</code>) then <code>request.isSecure = true</code>,
+ * <code>request.scheme = https</code> and <code>request.serverPort = 443</code>. Note that 443 can be overwritten with the
+ * <code>$httpsServerPort</code> configuration parameter.</li>
  * </ul>
  * </p>
  * <p>
@@ -74,18 +84,22 @@ import org.slf4j.LoggerFactory;
  * <table border="1">
  * <tr>
  * <th>RemoteIpValve property</th>
+ * <th>Description</th>
  * <th>Equivalent mod_remoteip directive</th>
  * <th>Format</th>
  * <th>Default Value</th>
  * </tr>
  * <tr>
  * <td>remoteIPHeader</td>
+ * <td>Name of the Http Header read by this servlet filter that holds the list of traversed IP addresses starting from the requesting client</td>
  * <td>RemoteIPHeader</td>
- * <td>Compliant http header string</td>
+ * <td>Compliant http header name</td>
  * <td>x-forwarded-for</td>
  * </tr>
  * <tr>
  * <td>internalProxies</td>
+ * <td>List of internal proxies ip adress. If they appear in the <code>remoteIpHeader</code> value, they will be trusted and will not appear
+ * in the <code>proxiesHeader</code> value</td>
  * <td>RemoteIPInternalProxy</td>
  * <td>Comma delimited list of regular expressions (in the syntax supported by the {@link java.util.regex.Pattern} library)</td>
  * <td>10\.\d{1,3}\.\d{1,3}\.\d{1,3}, 192\.168\.\d{1,3}\.\d{1,3}, 169\.254\.\d{1,3}\.\d{1,3}, 127\.\d{1,3}\.\d{1,3}\.\d{1,3} <br/>
@@ -95,24 +109,30 @@ import org.slf4j.LoggerFactory;
  * </tr>
  * <tr>
  * <td>proxiesHeader</td>
+ * <td>Name of the http header created by this servlet filter to hold the list of proxies that have been processed in the incoming
+ * <code>remoteIPHeader</code></td>
  * <td>RemoteIPProxiesHeader</td>
- * <td>Compliant http header String</td>
+ * <td>Compliant http header name</td>
  * <td>x-forwarded-by</td>
  * </tr>
  * <tr>
  * <td>trustedProxies</td>
+ * <td>List of trusted proxies ip adress. If they appear in the <code>remoteIpHeader</code> value, they will be trusted and will appear
+ * in the <code>proxiesHeader</code> value</td>
  * <td>RemoteIPTrustedProxy</td>
  * <td>Comma delimited list of regular expressions (in the syntax supported by the {@link java.util.regex.Pattern} library)</td>
  * <td>&nbsp;</td>
  * </tr>
  * <tr>
  * <td>protocolHeader</td>
+ * <td>Name of the http header read by this servlet filter that holds the flag that this request </td>
  * <td>N/A</td>
- * <td>Compliant http header string like <code>X-Forwarded-Pro</code></td>
+ * <td>Compliant http header name like <code>X-Forwarded-Proto</code>, <code>X-Forwarded-Ssl</code> or <code>Front-End-Https</code></td>
  * <td><code>null</code></td>
  * </tr>
  * <tr>
- * <td>protocolHeaderSslValue</td>
+ * <td>protocolHeaderHttpsValue</td>
+ * <td>Value of the <code>protocolHeader</code> to indicate that it is an Https request</td>
  * <td>N/A</td>
  * <td>String like <code>https</code> or <code>ON</code></td>
  * <td><code>https</code></td>
@@ -122,15 +142,72 @@ import org.slf4j.LoggerFactory;
  * </p>
  * <p>
  * <p>
- * This Valve may be attached to any Container, depending on the granularity of the filtering you wish to perform.
+ * <strong>Regular expression vs. IP address blocks:</strong> <code>mod_remoteip</code> allows to use address blocks (e.g.
+ * <code>192.168/16</code>) to configure <code>RemoteIPInternalProxy</code> and <code>RemoteIPTrustedProxy</code> ; as the JVM doesnt have a
+ * library similar to <a
+ * href="http://apr.apache.org/docs/apr/1.3/group__apr__network__io.html#gb74d21b8898b7c40bf7fd07ad3eb993d">apr_ipsubnet_test</a>.
+ * </p>
+ * <hr/>
+ * <p>
+ * <strong>Sample with internal proxies</strong>
  * </p>
  * <p>
- * <strong>Regular expression vs. IP address blocks:</strong> <code>mod_remoteip</code> allows to use address blocks (e.g.
- * <code>192.168/16</code>) to configure <code>RemoteIPInternalProxy</code> and <code>RemoteIPTrustedProxy</code> ; as Tomcat doesn't have a
- * library similar to <a
- * href="http://apr.apache.org/docs/apr/1.3/group__apr__network__io.html#gb74d21b8898b7c40bf7fd07ad3eb993d">apr_ipsubnet_test</a>,
- * <code>RemoteIpValve</code> uses regular expression to configure <code>internalProxies</code> and <code>trustedProxies</code> in the same
- * fashion as {@link org.apache.catalina.valves.RequestFilterValve} does.
+ * RemoteIpValve configuration:
+ * </p>
+ * <code><pre>
+ * &lt;Valve 
+ *   className="org.apache.catalina.connector.RemoteIpValve"
+ *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   remoteIPHeader="x-forwarded-for"
+ *   remoteIPProxiesHeader="x-forwarded-by"
+ *   protocolHeader="x-forwarded-proto"
+ *   /&gt;</pre></code>
+ * <p>
+ * Request values:
+ * <table border="1">
+ * <tr>
+ * <th>property</th>
+ * <th>Value Before RemoteIpValve</th>
+ * <th>Value After RemoteIpValve</th>
+ * </tr>
+ * <tr>
+ * <td>request.remoteAddr</td>
+ * <td>192.168.0.10</td>
+ * <td>140.211.11.130</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-for']</td>
+ * <td>140.211.11.130, 192.168.0.10</td>
+ * <td>null</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-by']</td>
+ * <td>null</td>
+ * <td>null</td>
+ * </tr>
+ * <tr>
+ * <td>request.header['x-forwarded-proto']</td>
+ * <td>https</td>
+ * <td>https</td>
+ * </tr>
+ * <tr>
+ * <td>request.scheme</td>
+ * <td>http</td>
+ * <td>https</td>
+ * </tr>
+ * <tr>
+ * <td>request.secure</td>
+ * <td>false</td>
+ * <td>true</td>
+ * </tr>
+ * <tr>
+ * <td>request.serverPort</td>
+ * <td>80</td>
+ * <td>443</td>
+ * </tr>
+ * </table>
+ * Note : <code>x-forwarded-by</code> header is null because only internal proxies as been traversed by the request.
+ * <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
  * </p>
  * <hr/>
  * <p>
@@ -219,47 +296,6 @@ import org.slf4j.LoggerFactory;
  * </p>
  * <hr/>
  * <p>
- * <strong>Sample with internal proxies</strong>
- * </p>
- * <p>
- * RemoteIpValve configuration:
- * </p>
- * <code><pre>
- * &lt;Valve 
- *   className="org.apache.catalina.connector.RemoteIpValve"
- *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
- *   remoteIPHeader="x-forwarded-for"
- *   remoteIPProxiesHeader="x-forwarded-by"
- *   /&gt;</pre></code>
- * <p>
- * Request values:
- * <table border="1">
- * <tr>
- * <th>property</th>
- * <th>Value Before RemoteIpValve</th>
- * <th>Value After RemoteIpValve</th>
- * </tr>
- * <tr>
- * <td>request.remoteAddr</td>
- * <td>192.168.0.10</td>
- * <td>140.211.11.130</td>
- * </tr>
- * <tr>
- * <td>request.header['x-forwarded-for']</td>
- * <td>140.211.11.130, 192.168.0.10</td>
- * <td>null</td>
- * </tr>
- * <tr>
- * <td>request.header['x-forwarded-by']</td>
- * <td>null</td>
- * <td>null</td>
- * </tr>
- * </table>
- * Note : <code>x-forwarded-by</code> header is null because only internal proxies as been traversed by the request.
- * <code>x-forwarded-by</code> is null because all the proxies are trusted or internal.
- * </p>
- * <hr/>
- * <p>
  * <strong>Sample with an untrusted proxy</strong>
  * </p>
  * <p>
@@ -303,8 +339,6 @@ import org.slf4j.LoggerFactory;
  * verified by <code>proxy1</code>.
  * </p>
  * <hr/>
- * 
- * @author <a href="mailto:cyrille.leclerc@pobox.com">Cyrille Le Clerc</a>
  */
 public class XForwardedFilter implements Filter {
     
@@ -721,7 +755,7 @@ public class XForwardedFilter implements Filter {
             } catch (NumberFormatException e) {
                 throw new NumberFormatException("Illegal serverPort : " + e.getMessage());
             }
-        }        
+        }
     }
     
     /**
