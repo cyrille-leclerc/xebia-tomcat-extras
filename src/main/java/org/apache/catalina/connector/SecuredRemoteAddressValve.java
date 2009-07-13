@@ -34,7 +34,7 @@ import org.apache.juli.logging.LogFactory;
  * Sets {@link RequestFacade#isSecure()} to <code>true</code> if {@link Request#getRemoteAddr()} matches one of the
  * <code>securedRemoteAddresses</code> of this valve.
  */
-public class SecuredRemoteAddressesValve extends ValveBase {
+public class SecuredRemoteAddressValve extends ValveBase {
     
     /**
      * {@link Pattern} for a comma delimited string that support whitespace characters
@@ -44,7 +44,7 @@ public class SecuredRemoteAddressesValve extends ValveBase {
     /**
      * Logger
      */
-    private static Log log = LogFactory.getLog(SecuredRemoteAddressesValve.class);
+    private static Log log = LogFactory.getLog(SecuredRemoteAddressValve.class);
     
     /**
      * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
