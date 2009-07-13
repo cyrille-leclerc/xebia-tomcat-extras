@@ -155,7 +155,7 @@ import org.apache.juli.logging.LogFactory;
  * <code><pre>
  * &lt;Valve 
  *   className="org.apache.catalina.connector.RemoteIpValve"
- *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   internalProxies="192\.168\.0\.10, 192\.168\.0\.11"
  *   remoteIPHeader="x-forwarded-for"
  *   remoteIPProxiesHeader="x-forwarded-by"
  *   protocolHeader="x-forwarded-proto"
@@ -217,7 +217,7 @@ import org.apache.juli.logging.LogFactory;
  * <code><pre>
  * &lt;Valve 
  *   className="org.apache.catalina.connector.RemoteIpValve"
- *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   internalProxies="192\.168\.0\.10, 192\.168\.0\.11"
  *   remoteIPHeader="x-forwarded-for"
  *   remoteIPProxiesHeader="x-forwarded-by"
  *   trustedProxies="proxy1, proxy2"
@@ -259,7 +259,7 @@ import org.apache.juli.logging.LogFactory;
  * <code><pre>
  * &lt;Valve 
  *   className="org.apache.catalina.connector.RemoteIpValve"
- *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   internalProxies="192\.168\.0\.10, 192\.168\.0\.11"
  *   remoteIPHeader="x-forwarded-for"
  *   remoteIPProxiesHeader="x-forwarded-by"
  *   trustedProxies="proxy1, proxy2"
@@ -302,7 +302,7 @@ import org.apache.juli.logging.LogFactory;
  * <code><pre>
  * &lt;Valve 
  *   className="org.apache.catalina.connector.RemoteIpValve"
- *   allowedInternalProxies="192\.168\.0\.10, 192\.168\.0\.11"
+ *   internalProxies="192\.168\.0\.10, 192\.168\.0\.11"
  *   remoteIPHeader="x-forwarded-for"
  *   remoteIPProxiesHeader="x-forwarded-by"
  *   trustedProxies="proxy1, proxy2"
@@ -642,8 +642,8 @@ public class RemoteIpValve extends ValveBase {
      * Default value : 10\.\d{1,3}\.\d{1,3}\.\d{1,3}, 192\.168\.\d{1,3}\.\d{1,3}, 127\.\d{1,3}\.\d{1,3}\.\d{1,3}
      * </p>
      */
-    public void setInternalProxies(String commaAllowedInternalProxies) {
-        this.internalProxies = commaDelimitedListToPatternArray(commaAllowedInternalProxies);
+    public void setInternalProxies(String commaDelimitedInternalProxies) {
+        this.internalProxies = commaDelimitedListToPatternArray(commaDelimitedInternalProxies);
     }
     
     /**
