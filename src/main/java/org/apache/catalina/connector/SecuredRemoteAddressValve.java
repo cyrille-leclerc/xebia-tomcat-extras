@@ -31,23 +31,26 @@ import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 /**
- * Sets {@link RequestFacade#isSecure()} to <code>true</code> if {@link Request#getRemoteAddr()} matches one of the
+ * Sets {@link RequestFacade#isSecure()} to <code>true</code> if
+ * {@link Request#getRemoteAddr()} matches one of the
  * <code>securedRemoteAddresses</code> of this valve.
  */
 public class SecuredRemoteAddressValve extends ValveBase {
-    
+
     /**
-     * {@link Pattern} for a comma delimited string that support whitespace characters
+     * {@link Pattern} for a comma delimited string that support whitespace
+     * characters
      */
     private static final Pattern commaSeparatedValuesPattern = Pattern.compile("\\s*,\\s*");
-    
+
     /**
      * Logger
      */
     private static Log log = LogFactory.getLog(SecuredRemoteAddressValve.class);
-    
+
     /**
-     * Convert a given comma delimited list of regular expressions into an array of compiled {@link Pattern}
+     * Convert a given comma delimited list of regular expressions into an array
+     * of compiled {@link Pattern}
      */
     protected static Pattern[] commaDelimitedListToPatternArray(String commaDelimitedPatterns) {
         String[] patterns = commaDelimitedListToStringArray(commaDelimitedPatterns);
@@ -61,17 +64,19 @@ public class SecuredRemoteAddressValve extends ValveBase {
         }
         return patternsList.toArray(new Pattern[0]);
     }
-    
+
     /**
-     * Convert a given comma delimited list of regular expressions into an array of String
+     * Convert a given comma delimited list of regular expressions into an array
+     * of String
      */
     protected static String[] commaDelimitedListToStringArray(String commaDelimitedStrings) {
         return (commaDelimitedStrings == null || commaDelimitedStrings.length() == 0) ? new String[0] : commaSeparatedValuesPattern
-            .split(commaDelimitedStrings);
+                .split(commaDelimitedStrings);
     }
-    
+
     /**
-     * Return <code>true</code> if the given <code>str</code> matches at least one of the given <code>patterns</code>.
+     * Return <code>true</code> if the given <code>str</code> matches at least
+     * one of the given <code>patterns</code>.
      */
     protected static boolean matchesOne(String str, Pattern... patterns) {
         for (Pattern pattern : patterns) {
@@ -81,22 +86,21 @@ public class SecuredRemoteAddressValve extends ValveBase {
         }
         return false;
     }
-    
+
     /**
      * @see #setSecuredRemoteAddresses(String)
      */
-    private Pattern[] securedRemoteAddresses = new Pattern[] {
-        Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"),
-        Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
-    };
-    
+    private Pattern[] securedRemoteAddresses = new Pattern[] { Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"),
+            Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("172\\.(?:1[6-9]|2\\d|3[0-1]).\\d{1,3}.\\d{1,3}"),
+            Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}") };
+
     /**
      * @inheritDoc
      */
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
         final RequestFacade originalRequestFacade = request.facade;
-        
+
         final boolean secure = request.isSecure() || matchesOne(request.getRemoteAddr(), securedRemoteAddresses);
         request.facade = new RequestFacade(request) {
             @Override
@@ -104,25 +108,28 @@ public class SecuredRemoteAddressValve extends ValveBase {
                 return secure;
             }
         };
-        
+
         if (log.isDebugEnabled()) {
             log.debug("Incoming request uri=" + request.getRequestURI() + " with secure='" + request.isSecure() + "', remoteAddr='"
-                      + request.getRemoteAddr() + "' will be seen with requestFacade.secure='" + secure + "'");
+                    + request.getRemoteAddr() + "' will be seen with requestFacade.secure='" + secure + "'");
         }
-        
+
         try {
             getNext().invoke(request, response);
         } finally {
             request.facade = originalRequestFacade;
         }
     }
-    
+
     /**
      * <p>
-     * Comma delimited list of secured IP addresses proxies. Expressed with regular expressions.
+     * Comma delimited list of secured IP addresses. Expressed with regular
+     * expressions.
      * </p>
      * <p>
-     * Default value : 10\.\d{1,3}\.\d{1,3}\.\d{1,3}, 192\.168\.\d{1,3}\.\d{1,3}
+     * Default value : 10\.\d{1,3}\.\d{1,3}\.\d{1,3},
+     * 192\.168\.\d{1,3}\.\d{1,3}, 172\.(?:1[6-9]|2\d|3[0-1]).\d{1,3}.\d{1,3},
+     * 169\.254\.\d{1,3}\.\d{1,3}, 127\.\d{1,3}\.\d{1,3}\.\d{1,3}
      * </p>
      */
     public void setSecuredRemoteAddresses(String securedRemoteAddresses) {
