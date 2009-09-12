@@ -31,9 +31,15 @@ import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 /**
+ * <p>
  * Sets {@link RequestFacade#isSecure()} to <code>true</code> if
  * {@link Request#getRemoteAddr()} matches one of the
  * <code>securedRemoteAddresses</code> of this valve.
+ * </p>
+ * <p>
+ * This class must be located in <code>org.apache.catalina.connector</code> to
+ * have access the <code>protected</code> variable {@link Request#facade}.
+ * </p>
  */
 public class SecuredRemoteAddressValve extends ValveBase {
 
@@ -41,7 +47,7 @@ public class SecuredRemoteAddressValve extends ValveBase {
      * {@link Pattern} for a comma delimited string that support whitespace
      * characters
      */
-    private static final Pattern commaSeparatedValuesPattern = Pattern.compile("\\s*,\\s*");
+    private static final Pattern commaDelimitedValuesPattern = Pattern.compile("\\s*,\\s*");
 
     /**
      * Logger
@@ -70,7 +76,7 @@ public class SecuredRemoteAddressValve extends ValveBase {
      * of String
      */
     protected static String[] commaDelimitedListToStringArray(String commaDelimitedStrings) {
-        return (commaDelimitedStrings == null || commaDelimitedStrings.length() == 0) ? new String[0] : commaSeparatedValuesPattern
+        return (commaDelimitedStrings == null || commaDelimitedStrings.length() == 0) ? new String[0] : commaDelimitedValuesPattern
                 .split(commaDelimitedStrings);
     }
 
