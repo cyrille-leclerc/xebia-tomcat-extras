@@ -19,6 +19,7 @@ package org.apache.catalina.connector;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -394,12 +395,12 @@ public class RemoteIpValve extends ValveBase {
     /**
      * Convert an array of strings in a comma delimited string
      */
-    protected static String listToCommaDelimitedString(List<String> stringList) {
-        if (stringList == null) {
+    protected static String listToCommaDelimitedString(List<?> list) {
+        if (list == null) {
             return "";
         }
         StringBuilder result = new StringBuilder();
-        for (Iterator<String> it = stringList.iterator(); it.hasNext();) {
+        for (Iterator<?> it = list.iterator(); it.hasNext();) {
             Object element = it.next();
             if (element != null) {
                 result.append(element);
@@ -431,10 +432,9 @@ public class RemoteIpValve extends ValveBase {
     /**
      * @see #setInternalProxies(String)
      */
-    private Pattern[] internalProxies = new Pattern[] {
-        Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"),
-        Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}")
-    };
+    private Pattern[] internalProxies = new Pattern[] { Pattern.compile("10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}"),
+            Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("172\\.(?:1[6-9]|2\\d|3[0-1]).\\d{1,3}.\\d{1,3}"),
+            Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}") };
     
     /**
      * @see #setProtocolHeader(String)
@@ -477,11 +477,7 @@ public class RemoteIpValve extends ValveBase {
      * @return comma delimited list of internal proxies
      */
     public String getInternalProxies() {
-        List<String> internalProxiesAsStringList = new ArrayList<String>();
-        for (Pattern internalProxyPattern : internalProxies) {
-            internalProxiesAsStringList.add(String.valueOf(internalProxyPattern));
-        }
-        return listToCommaDelimitedString(internalProxiesAsStringList);
+        return listToCommaDelimitedString(Arrays.asList(internalProxies));
     }
     
     /**
@@ -521,11 +517,7 @@ public class RemoteIpValve extends ValveBase {
      * @return comma delimited list of trusted proxies
      */
     public String getTrustedProxies() {
-        List<String> trustedProxiesAsStringList = new ArrayList<String>();
-        for (Pattern trustedProxy : trustedProxies) {
-            trustedProxiesAsStringList.add(String.valueOf(trustedProxy));
-        }
-        return listToCommaDelimitedString(trustedProxiesAsStringList);
+        return listToCommaDelimitedString(Arrays.asList(trustedProxies));
     }
     
     /**
