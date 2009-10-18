@@ -19,6 +19,8 @@ package org.apache.catalina.connector;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -81,6 +83,26 @@ public class SecuredRemoteAddressValve extends ValveBase {
     }
 
     /**
+     * Convert an array of objects in a comma delimited string
+     */
+    protected static String listToCommaDelimitedString(List<?> list) {
+        if (list == null) {
+            return "";
+        }
+        StringBuilder result = new StringBuilder();
+        for (Iterator<?> it = list.iterator(); it.hasNext();) {
+            Object element = it.next();
+            if (element != null) {
+                result.append(element);
+                if (it.hasNext()) {
+                    result.append(", ");
+                }
+            }
+        }
+        return result.toString();
+    }
+
+    /**
      * Return <code>true</code> if the given <code>str</code> matches at least
      * one of the given <code>patterns</code>.
      */
@@ -100,6 +122,9 @@ public class SecuredRemoteAddressValve extends ValveBase {
             Pattern.compile("192\\.168\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("172\\.(?:1[6-9]|2\\d|3[0-1]).\\d{1,3}.\\d{1,3}"),
             Pattern.compile("169\\.254\\.\\d{1,3}\\.\\d{1,3}"), Pattern.compile("127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}") };
 
+    public String getSecuredRemoteAddresses() {
+        return listToCommaDelimitedString(Arrays.asList(securedRemoteAddresses));
+    }
     /**
      * @inheritDoc
      */
