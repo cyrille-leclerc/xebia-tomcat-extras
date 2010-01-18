@@ -29,10 +29,9 @@ import javax.servlet.ServletException;
 
 import org.apache.catalina.util.StringManager;
 import org.apache.catalina.valves.Constants;
-import org.apache.catalina.valves.RequestFilterValve;
 import org.apache.catalina.valves.ValveBase;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * <p>
@@ -136,7 +135,7 @@ import org.apache.juli.logging.LogFactory;
  * library similar to <a
  * href="http://apr.apache.org/docs/apr/1.3/group__apr__network__io.html#gb74d21b8898b7c40bf7fd07ad3eb993d">apr_ipsubnet_test</a>,
  * <code>RemoteIpValve</code> uses regular expression to configure <code>internalProxies</code> and <code>trustedProxies</code> in the same
- * fashion as {@link RequestFilterValve} does.
+ * fashion as {@link org.apache.catalina.valves.RequestFilterValve} does.
  * </p>
  * <p>
  * <strong>Package org.apache.catalina.connector vs. org.apache.catalina.valves</strong>: This valve is temporarily located in

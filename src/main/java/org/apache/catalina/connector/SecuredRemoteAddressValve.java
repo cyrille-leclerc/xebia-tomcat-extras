@@ -25,10 +25,9 @@ import java.util.regex.PatternSyntaxException;
 
 import javax.servlet.ServletException;
 
-import org.apache.catalina.connector.Response;
 import org.apache.catalina.valves.ValveBase;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Sets {@link RequestFacade#isSecure()} to <code>true</code> if {@link Request#getRemoteAddr()} matches one of the
