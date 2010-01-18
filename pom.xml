@@ -4,12 +4,12 @@
    <groupId>fr.xebia.tomcat.extras</groupId>
    <artifactId>xebia-tomcat-extras</artifactId>
    <packaging>jar</packaging>
-   <description>Extras for Tomcat 6</description>
-   <version>1.0.0</version>
+   <description>Extras for Tomcat 5.5</description>
+   <version>tc55-1.0.0-SNAPSHOT</version>
    <scm>
-      <connection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-1.0.0</connection>
-      <developerConnection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-1.0.0</developerConnection>
-      <url>https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-1.0.0</url>
+      <connection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/branches/tomcat55</connection>
+      <developerConnection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/branches/tomcat55</developerConnection>
+      <url>https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/branches/tomcat55</url>
    </scm>
    <build>
       <plugins>
@@ -19,6 +19,13 @@
             <configuration>
                <source>1.5</source>
                <target>1.5</target>
+            </configuration>
+         </plugin>
+         <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-eclipse-plugin</artifactId>
+            <configuration>
+               <addVersionToProjectName>true</addVersionToProjectName>
             </configuration>
          </plugin>
          <plugin>
@@ -72,34 +79,39 @@
    </distributionManagement>
    <dependencies>
       <dependency>
-         <groupId>org.apache.tomcat</groupId>
-         <artifactId>jasper</artifactId>
+         <groupId>tomcat</groupId>
+         <artifactId>jasper-runtime</artifactId>
          <version>${tomcat.version}</version>
       </dependency>
       <dependency>
-         <groupId>org.apache.tomcat</groupId>
+         <groupId>tomcat</groupId>
          <artifactId>catalina</artifactId>
          <version>${tomcat.version}</version>
       </dependency>
       <dependency>
-         <groupId>org.apache.tomcat</groupId>
-         <artifactId>catalina-ha</artifactId>
+         <groupId>tomcat</groupId>
+         <artifactId>catalina-cluster</artifactId>
          <version>${tomcat.version}</version>
       </dependency>
       <dependency>
-         <groupId>org.apache.tomcat</groupId>
-         <artifactId>dbcp</artifactId>
+         <groupId>tomcat</groupId>
+         <artifactId>naming-factory-dbcp</artifactId>
          <version>${tomcat.version}</version>
       </dependency>
       <dependency>
-         <groupId>org.apache.tomcat</groupId>
-         <artifactId>coyote</artifactId>
+         <groupId>tomcat</groupId>
+         <artifactId>tomcat-coyote</artifactId>
          <version>${tomcat.version}</version>
       </dependency>
       <dependency>
-         <groupId>org.apache.tomcat</groupId>
-         <artifactId>juli</artifactId>
+         <groupId>tomcat</groupId>
+         <artifactId>tomcat-juli</artifactId>
          <version>${tomcat.version}</version>
+      </dependency>
+      <dependency>
+         <groupId>commons-logging</groupId>
+         <artifactId>commons-logging-api</artifactId>
+         <version>1.0.4</version>
       </dependency>
       <dependency>
          <groupId>junit</groupId>
@@ -109,7 +121,7 @@
       </dependency>
    </dependencies>
    <properties>
-      <tomcat.version>6.0.18</tomcat.version>
+      <tomcat.version>5.5.23</tomcat.version>
       <project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
    </properties>
 </project>
