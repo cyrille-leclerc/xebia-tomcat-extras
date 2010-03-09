@@ -86,7 +86,7 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
                     log.debug("Matching hostname : " + buildSslSessionLogMessage(hostname, session));
                 }
             } else {
-                log.warn("SSL SECURITY IS COMPROMISED ! Disabled SSL hostname verification for mismatch : "
+                log.warn("SSL SECURITY IS JEOPARDIZED ! SSL hostname mismatch : "
                          + buildSslSessionLogMessage(hostname, session));
             }
             return true;
@@ -196,7 +196,7 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
          * Builds a log message describing the given <code>certs</code> chain.
          */
         private String buildLogCertificationException(X509Certificate[] certs) {
-            StringBuilder sb = new StringBuilder("Non blocking X509 Certificate exception - ");
+            StringBuilder sb = new StringBuilder("SSL SECURITY IS JEOPARDIZED ! ");
 
             if (certs.length == 1) {
                 X509Certificate certificate = certs[0];
@@ -289,7 +289,7 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
                     throw new RuntimeException("SSLSocketFactory initialization exception", e);
                 }
                 HttpsURLConnection.setDefaultSSLSocketFactory(sslSocketFactory);
-                log.error("SSL VERIFICATIONS DISABLED ! SHOULD NOT BE USED IN PRODUCTION !");
+                log.error("SSL VERIFICATIONS DISABLED ! SECURITY IS JEOPARDIZED ! SHOULD BE USED CAREFULLY IN PRODUCTION !");
             } else {
                 log.info("SSL verifications NOT bypassed because listener is disabled");
             }
