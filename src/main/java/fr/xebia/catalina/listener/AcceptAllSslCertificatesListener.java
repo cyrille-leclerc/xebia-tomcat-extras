@@ -15,18 +15,15 @@
  */
 package fr.xebia.catalina.listener;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.security.Principal;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.StringTokenizer;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -37,7 +34,6 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
-import javax.security.auth.x500.X500Principal;
 
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleEvent;
@@ -331,16 +327,30 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
                 // X509 CERTIFICATE VERIFIER
                 SSLSocketFactory sslSocketFactory;
                 try {
-                    SSLContext sslContext = SSLContext.getInstance("SSL");
+                    SSLContext acceptAllCertificatesSslContext = SSLContext.getInstance("SSL");
                     TrustManager[] acceptAllCertificatesTrustManagers = new TrustManager[] {
                         new AcceptAllX509TrustManager()
                     };
-                    sslContext.init(null, acceptAllCertificatesTrustManagers, new SecureRandom());
-                    sslSocketFactory = sslContext.getSocketFactory();
+                    acceptAllCertificatesSslContext.init(null, acceptAllCertificatesTrustManagers,
+                                                         new SecureRandom());
+                    sslSocketFactory = acceptAllCertificatesSslContext.getSocketFactory();
+
+                    try {
+                        Method setDefaultMethod = SSLContext.class.getMethod("setDefault", new Class[] {
+                            SSLContext.class
+                        });
+                        setDefaultMethod.invoke(null, acceptAllCertificatesSslContext);
+                    } catch (Exception e) {
+                        log.warn("Exception setting default SSLContext. "
+                                 + "Some SSL Certificates could not be deactivated. "
+                                 + "Requires a 1.6+ JVM a proper security permissions.", e);
+                    }
+
                 } catch (GeneralSecurityException e) {
                     throw new RuntimeException("SSLSocketFactory initialization exception", e);
                 }
                 HttpsURLConnection.setDefaultSSLSocketFactory(sslSocketFactory);
+
                 log
                     .error("SSL VERIFICATIONS DISABLED ! SECURITY IS JEOPARDIZED ! SHOULD BE USED CAREFULLY IN PRODUCTION !");
             } else {
