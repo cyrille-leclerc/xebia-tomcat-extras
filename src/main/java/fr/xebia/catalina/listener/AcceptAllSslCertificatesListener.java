@@ -59,6 +59,54 @@ import org.apache.juli.logging.LogFactory;
  * <li>Expired certificates,</li>
  * <li>Mismatch between the HTTP <code>Host</code> and the certificate's Common Name (CN).</li>
  * </ul>
+ * <p>
+ * <strong>Simple Configuration Sample</strong>
+ * </p>
+ * Extract from <code>server.xml</code>:
+ * 
+ * <pre>
+ * <code>
+ * &lt;Server port="8005" shutdown="SHUTDOWN"&gt;
+ *   ...
+ *   &lt;!-- 
+ *     Disable SSL/X509 certificates verifications (self-signed, untrusted Certificate Authority, not yet valid, expired) 
+ *   --&gt;
+ *   &lt;Listener 
+ *      className="fr.xebia.catalina.listener.AcceptAllSslCertificatesListener"
+ *      enabled="true" /&gt;
+ *   ...
+ * &lt;/Server&gt;
+ * </code>
+ * </pre>
+ * <p>
+ * <strong>Parameterizable Configuration Sample</strong>
+ * </p>
+ * Extract from <code>server.xml</code>:
+ * 
+ * <pre>
+ * <code>
+ * &lt;Server port="8005" shutdown="SHUTDOWN"&gt;
+ *   ...
+ *   &lt;!-- 
+ *     Disable SSL/X509 certificates verifications (self-signed, untrusted Certificate Authority, not yet valid, expired) 
+ *   --&gt;
+ *   &lt;Listener 
+ *      className="fr.xebia.catalina.listener.AcceptAllSslCertificatesListener"
+ *      enabled="${acceptAllSslCertificates}" /&gt;
+ *   ...
+ * &lt;/Server&gt;
+ * </code>
+ * </pre>
+ * 
+ * Extract from <code>catalina.properties</code>:
+ * 
+ * <pre>
+ * <code>
+ * ...
+ * acceptAllSslCertificates=true
+ * ...
+ * </code>
+ * </pre>
  * 
  * @author <a href="mailto:cyrille@cyrilleleclerc.com">Cyrille Le Clerc</a>
  */
@@ -66,10 +114,14 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
 
     /**
      * This {@link HostnameVerifier} allows SSL HTTPS requests with hostname that does not match the server
-     * SSL certificate CN.
+     * SSL certificate CN .
      */
     protected static class AcceptAllHostnameVerifier implements HostnameVerifier {
 
+        /**
+         * {@link HostnameVerifier} called to test the ssl connection and to emit warning messages in case of
+         * problems
+         */
         private HostnameVerifier initialHostnameVerifier;
 
         public AcceptAllHostnameVerifier(HostnameVerifier initialHostnameVerifier) {
@@ -143,7 +195,7 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
             try {
                 x509TrustManager.checkClientTrusted(certs, authType);
             } catch (CertificateException e) {
-                if (log.isTraceEnabled()) {
+                if (log.isDebugEnabled()) {
                     log.error(buildLogCertificationException(certs), e);
                 } else {
                     log.error(buildLogCertificationException(certs) + " : " + e);
@@ -158,7 +210,7 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
             try {
                 x509TrustManager.checkServerTrusted(certs, authType);
             } catch (CertificateException e) {
-                if (log.isTraceEnabled()) {
+                if (log.isDebugEnabled()) {
                     log.error(buildLogCertificationException(certs), e);
                 } else {
                     log.error(buildLogCertificationException(certs) + " : " + e);
@@ -289,19 +341,16 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
                     throw new RuntimeException("SSLSocketFactory initialization exception", e);
                 }
                 HttpsURLConnection.setDefaultSSLSocketFactory(sslSocketFactory);
-                log.error("SSL VERIFICATIONS DISABLED ! SECURITY IS JEOPARDIZED ! SHOULD BE USED CAREFULLY IN PRODUCTION !");
+                log
+                    .error("SSL VERIFICATIONS DISABLED ! SECURITY IS JEOPARDIZED ! SHOULD BE USED CAREFULLY IN PRODUCTION !");
             } else {
-                log.info("SSL verifications NOT bypassed because listener is disabled");
+                log.info("AcceptAllSslCertificatesListener is disabled. SSL verifications are activated.");
             }
         }
 
     }
 
     public void setEnabled(boolean enabled) {
-        if (this.enabled == true && enabled == false) {
-            throw new UnsupportedOperationException(
-                                                    "SSL verifications can NOT be re-enabled once they have been disabled");
-        }
         this.enabled = enabled;
     }
 }
