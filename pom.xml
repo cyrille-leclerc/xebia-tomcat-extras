@@ -5,11 +5,11 @@
    <artifactId>xebia-tomcat-extras</artifactId>
    <packaging>jar</packaging>
    <description>Extras for Tomcat 6</description>
-   <version>1.0.1.1-SNAPSHOT</version>
+   <version>1.0.1.1</version>
    <scm>
-      <connection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</connection>
-      <developerConnection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/trunk</developerConnection>
-      <url>https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/</url>
+      <connection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-1.0.1.1</connection>
+      <developerConnection>scm:svn:https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-1.0.1.1</developerConnection>
+      <url>https://xebia-france.googlecode.com/svn/tomcat/xebia-tomcat-extras/tags/xebia-tomcat-extras-1.0.1.1</url>
    </scm>
    <build>
       <plugins>
