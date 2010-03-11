@@ -56,7 +56,7 @@ import org.apache.juli.logging.LogFactory;
  * <ul>
  * <li>Self-signed certificates,</li>
  * <li>Non trusted certificate authorities,</li>
- * <li>Expired certificates,</li>
+ * <li>Expired/not yet valid certificates,</li>
  * <li>Mismatch between the HTTP <code>Host</code> and the certificate's Common Name (CN).</li>
  * </ul>
  * <p>
