@@ -15,6 +15,7 @@
  */
 package fr.xebia.catalina.authenticator;
 
+import org.apache.catalina.Authenticator;
 import org.apache.catalina.authenticator.Constants;
 import org.apache.catalina.authenticator.FormAuthenticator;
 import org.apache.catalina.connector.Request;
@@ -26,9 +27,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 /**
+ * Form based Authenticator which does not require external login configuration (login-page and error-page).
+ *
  * @author <a href="mailto:cleclerc@xebia.fr">Cyrille Le Clerc</a>
  */
-public class XFormAuthenticator extends FormAuthenticator {
+public class XFormAuthenticator extends FormAuthenticator implements Authenticator {
 
     @Override
     protected void forwardToErrorPage(Request request, Response response, LoginConfig config) throws IOException {

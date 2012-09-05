@@ -16,6 +16,7 @@
 package fr.xebia.catalina.realm;
 
 import org.apache.catalina.Context;
+import org.apache.catalina.Realm;
 import org.apache.catalina.connector.Request;
 import org.apache.catalina.deploy.SecurityCollection;
 import org.apache.catalina.deploy.SecurityConstraint;
@@ -24,24 +25,45 @@ import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 /**
+ * Realm implementation in which all the resources are secured and require the given role.
+ * <p/>
+ * Default required role is 'user'.
+ *
+ * Configuration sample:
+ * <pre><code>
+ * &lt;Realm className="fr.xebia.catalina.realm.PrivateRealm"&gt;
+ *     &lt;Realm className="org.apache.catalina.realm.MemoryRealm" /&gt;
+ * &lt;/Realm&gt;
+ * </code></pre>
+ *
  * @author <a href="mailto:cleclerc@xebia.fr">Cyrille Le Clerc</a>
  */
-public class PrivateRealm extends CombinedRealm {
+public class PrivateRealm extends CombinedRealm implements Realm {
 
     private static Log log = LogFactory.getLog(PrivateRealm.class);
+
+    private String requiredRole = "user";
 
     @Override
     public SecurityConstraint[] findSecurityConstraints(Request request, Context context) {
 
-        if(log.isDebugEnabled())
+        if (log.isDebugEnabled())
             log.debug(" return default security constraint ");
 
         SecurityCollection securityCollection = new SecurityCollection("all");
         securityCollection.addPattern("/*");
         SecurityConstraint securityConstraint = new SecurityConstraint();
         securityConstraint.addCollection(securityCollection);
-        securityConstraint.addAuthRole("user");
+        securityConstraint.addAuthRole(requiredRole);
 
         return new SecurityConstraint[]{securityConstraint};
+    }
+
+    public String getRequiredRole() {
+        return requiredRole;
+    }
+
+    public void setRequiredRole(String requiredRole) {
+        this.requiredRole = requiredRole;
     }
 }
