@@ -15,7 +15,6 @@
  */
 package fr.xebia.catalina.listener;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
