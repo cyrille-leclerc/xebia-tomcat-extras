@@ -29,7 +29,7 @@ import org.apache.juli.logging.LogFactory;
  * <p/>
  * Default required role is 'user'.
  *
- * Configuration sample:
+ * Configuration sample, extract of <code>server.xml</code>:
  * <pre><code>
  * &lt;Realm className="fr.xebia.catalina.realm.PrivateRealm"&gt;
  *     &lt;Realm className="org.apache.catalina.realm.MemoryRealm" /&gt;

@@ -21,17 +21,90 @@ import org.apache.catalina.authenticator.FormAuthenticator;
 import org.apache.catalina.connector.Request;
 import org.apache.catalina.connector.Response;
 import org.apache.catalina.deploy.LoginConfig;
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.regex.Pattern;
 
 /**
+ * <p>
  * Form based Authenticator which does not require external login configuration (login-page and error-page).
+ * </p>
+ * <p/>
+ * <p>Sample, of <code></code>context.xml</p>
+ * <pre><code>
+ * &lt;Context &gt;
+ *     &lt;Valve className="fr.xebia.catalina.authenticator.XFormAuthenticator" /&gt;
+ * &lt;/Context&gt;
+ * </code>
+ * </pre>
  *
  * @author <a href="mailto:cleclerc@xebia.fr">Cyrille Le Clerc</a>
  */
 public class XFormAuthenticator extends FormAuthenticator implements Authenticator {
+
+    private static Log log = LogFactory.getLog(XFormAuthenticator.class);
+
+    private Pattern includeUrlPattern = null;
+
+    private Pattern excludeUrlPattern = Pattern.compile(".*\\.ico" +
+            "|" + ".*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.bmp|.*\\.gif" +
+            "|" + ".*\\.css" +
+            "|" + ".*\\.js");
+
+    public boolean skipAuthentication(Request request) {
+        // like "" for root context or "/foo" for "foo" context
+        String requestURI = request.getDecodedRequestURI();
+        String contextPath = request.getContextPath();
+
+        if (!requestURI.startsWith(contextPath)) {
+            log.warn("Unexpected URI '" + requestURI + "' for contextPath='" + contextPath + "'");
+            return false;
+        }
+        String contextRelativePath = requestURI.substring(contextPath.length());
+
+        if (excludeUrlPattern == null) {
+            log.debug("No excludeUrlPattern defined");
+        } else if (excludeUrlPattern.matcher(contextRelativePath).matches()) {
+            if (log.isDebugEnabled())
+                log.debug("Skip authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPattern='" + excludeUrlPattern + "'");
+            return true;
+        } else {
+            if (log.isDebugEnabled())
+                log.debug("Don't match excludeUrlPattern: requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPattern='" + excludeUrlPattern + "'");
+        }
+
+        if (includeUrlPattern == null) {
+            log.debug("No includeUrlPattern defined");
+        } else if (!includeUrlPattern.matcher(contextRelativePath).matches()) {
+            if (log.isDebugEnabled())
+                log.debug("Skip authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', do NOT match includeUrlPattern='" + includeUrlPattern + "'");
+            return true;
+        } else {
+            if (log.isDebugEnabled())
+                log.debug("Match includeUrlPattern: requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPattern='" + excludeUrlPattern + "'");
+        }
+
+        if (log.isDebugEnabled())
+            log.debug("Perform authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "'");
+        return false;
+    }
+
+    @Override
+    public void invoke(Request request, Response response) throws IOException, ServletException {
+
+        boolean skipAuthentication = skipAuthentication(request);
+
+        if (skipAuthentication) {
+            getNext().invoke(request, response);
+        } else {
+            super.invoke(request, response);
+        }
+    }
 
     @Override
     protected void forwardToErrorPage(Request request, Response response, LoginConfig config) throws IOException {
@@ -84,4 +157,21 @@ public class XFormAuthenticator extends FormAuthenticator implements Authenticat
         writer.flush();
 
     }
+
+    public String getIncludeUrlPattern() {
+        return includeUrlPattern.pattern();
+    }
+
+    public void setIncludeUrlPattern(String includeUrlPattern) {
+        this.includeUrlPattern = Pattern.compile(includeUrlPattern);
+    }
+
+    public String getExcludeUrlPattern() {
+        return excludeUrlPattern.pattern();
+    }
+
+    public void setExcludeUrlPattern(String excludeUrlPattern) {
+        this.excludeUrlPattern = Pattern.compile(excludeUrlPattern);
+    }
+
 }
