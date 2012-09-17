@@ -56,6 +56,11 @@ public class XFormAuthenticator extends FormAuthenticator implements Authenticat
             "|" + ".*\\.css" +
             "|" + ".*\\.js");
 
+    public XFormAuthenticator() {
+        super();
+        setChangeSessionIdOnAuthentication(false);
+    }
+
     public boolean skipAuthentication(Request request) {
         // like "" for root context or "/foo" for "foo" context
         String requestURI = request.getDecodedRequestURI();
