@@ -175,10 +175,9 @@ public class XFormAuthenticator extends ValveBase {
             String password = request.getParameter(Constants.FORM_PASSWORD);
             String redirectUrl = request.getParameter(FORM_REDIRECT_URL);
 
-            // TODO check method = POST
             Principal user = getContainer().getRealm().authenticate(username, password);
 
-            if (user == null) {
+            if (user == null || !"POST".equalsIgnoreCase(method)) {
                 // auth failure
                 if (log.isInfoEnabled())
                     log.info("Authentication FAILURE for '" + username + "' from " + request.getRemoteAddr());
