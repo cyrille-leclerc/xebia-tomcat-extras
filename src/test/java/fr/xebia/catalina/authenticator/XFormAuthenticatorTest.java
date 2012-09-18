@@ -39,7 +39,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(true, actual);
     }
 
@@ -58,7 +58,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(true, actual);
     }
 
@@ -77,7 +77,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(true, actual);
     }
 
@@ -96,7 +96,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(true, actual);
     }
 
@@ -115,7 +115,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(true, actual);
     }
 
@@ -133,7 +133,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(false, actual);
     }
 
@@ -152,7 +152,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(false, actual);
     }
 
@@ -170,7 +170,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(false, actual);
     }
 
@@ -189,7 +189,7 @@ public class XFormAuthenticatorTest {
             }
         };
 
-        boolean actual = formAuthenticator.skipAuthentication(request);
+        boolean actual = formAuthenticator.isSkipAuthenticationRequest(request);
         assertEquals(false, actual);
     }
 }

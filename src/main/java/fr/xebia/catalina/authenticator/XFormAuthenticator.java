@@ -15,19 +15,23 @@
  */
 package fr.xebia.catalina.authenticator;
 
-import org.apache.catalina.Authenticator;
 import org.apache.catalina.authenticator.Constants;
-import org.apache.catalina.authenticator.FormAuthenticator;
 import org.apache.catalina.connector.Request;
 import org.apache.catalina.connector.Response;
-import org.apache.catalina.deploy.LoginConfig;
+import org.apache.catalina.util.MD5Encoder;
+import org.apache.catalina.valves.ValveBase;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.Principal;
+import java.util.Random;
 import java.util.regex.Pattern;
 
 /**
@@ -45,23 +49,35 @@ import java.util.regex.Pattern;
  *
  * @author <a href="mailto:cleclerc@xebia.fr">Cyrille Le Clerc</a>
  */
-public class XFormAuthenticator extends FormAuthenticator implements Authenticator {
+public class XFormAuthenticator extends ValveBase {
 
     private static Log log = LogFactory.getLog(XFormAuthenticator.class);
 
-    private Pattern includeUrlPattern = null;
+    private final static String FORM_REDIRECT_URL = "j_redirect_url";
 
-    private Pattern excludeUrlPattern = Pattern.compile(".*\\.ico" +
+    /**
+     * name of the username cookie
+     */
+    private final static String USERNAME_COOKIE = "___username";
+
+    /**
+     * name of the hash cookie
+     */
+    private final static String HASH_COOKIE = "___hash";
+
+    private Pattern includeUrlPatternRegex = null;
+
+    private String excludeUrlPattern;
+
+    private Pattern excludeUrlPatternRegex = Pattern.compile(".*\\.ico" +
             "|" + ".*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.bmp|.*\\.gif" +
             "|" + ".*\\.css" +
             "|" + ".*\\.js");
 
-    public XFormAuthenticator() {
-        super();
-        setChangeSessionIdOnAuthentication(false);
-    }
+    private String secret = String.valueOf(new Random().nextLong());
 
-    public boolean skipAuthentication(Request request) {
+    public boolean isSkipAuthenticationRequest(Request request) {
+
         // like "" for root context or "/foo" for "foo" context
         String requestURI = request.getDecodedRequestURI();
         String contextPath = request.getContextPath();
@@ -72,47 +88,176 @@ public class XFormAuthenticator extends FormAuthenticator implements Authenticat
         }
         String contextRelativePath = requestURI.substring(contextPath.length());
 
-        if (excludeUrlPattern == null) {
-            log.debug("No excludeUrlPattern defined");
-        } else if (excludeUrlPattern.matcher(contextRelativePath).matches()) {
-            if (log.isDebugEnabled())
-                log.debug("Skip authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPattern='" + excludeUrlPattern + "'");
+        if (excludeUrlPatternRegex == null) {
+            log.trace("No excludeUrlPatternRegex defined");
+        } else if (excludeUrlPatternRegex.matcher(contextRelativePath).matches()) {
+            if (log.isTraceEnabled())
+                log.trace("Skip authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPatternRegex='" + excludeUrlPatternRegex + "'");
             return true;
         } else {
-            if (log.isDebugEnabled())
-                log.debug("Don't match excludeUrlPattern: requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPattern='" + excludeUrlPattern + "'");
+            if (log.isTraceEnabled())
+                log.trace("Don't match excludeUrlPatternRegex: requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPatternRegex='" + excludeUrlPatternRegex + "'");
         }
 
-        if (includeUrlPattern == null) {
-            log.debug("No includeUrlPattern defined");
-        } else if (!includeUrlPattern.matcher(contextRelativePath).matches()) {
-            if (log.isDebugEnabled())
-                log.debug("Skip authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', do NOT match includeUrlPattern='" + includeUrlPattern + "'");
+        if (includeUrlPatternRegex == null) {
+            log.debug("No includeUrlPatternRegex defined");
+        } else if (!includeUrlPatternRegex.matcher(contextRelativePath).matches()) {
+            if (log.isTraceEnabled())
+                log.trace("Skip authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', do NOT match includeUrlPatternRegex='" + includeUrlPatternRegex + "'");
             return true;
         } else {
-            if (log.isDebugEnabled())
-                log.debug("Match includeUrlPattern: requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPattern='" + excludeUrlPattern + "'");
+            if (log.isTraceEnabled())
+                log.trace("Match includeUrlPatternRegex: requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "', match excludeUrlPatternRegex='" + excludeUrlPatternRegex + "'");
         }
 
-        if (log.isDebugEnabled())
-            log.debug("Perform authentication for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "'");
+        if (log.isTraceEnabled())
+            log.trace("No exclude pattern for requestUri='" + requestURI + "', contextRelativePath='" + contextRelativePath + "'");
         return false;
+    }
+
+    /**
+     * @return authenticated user or <code>null</code> if user is not authenticated.
+     */
+    protected Principal authenticate(Request request, Response response) throws IOException {
+        final String username = getCookieValue(USERNAME_COOKIE, request);
+        String actualHash = getCookieValue(HASH_COOKIE, request);
+
+
+        if (username == null || username.isEmpty()) {
+            return null;
+        }
+
+        String expectedHash = hash(username, this.secret);
+
+        if (!expectedHash.equals(actualHash)) {
+            log.warn("Authentication FAILURE - Invalid hash for username:'" + username +
+                    "', ip:'" + request.getRemoteAddr() + "', request: '" + request.getRequestURL() + "'");
+
+            log.warn("NOTE: If your application is clusterized on several nodes, ensure the 'secret' attribute is defined on the Valve's configuration");
+
+            response.addCookie(new Cookie(USERNAME_COOKIE, null));
+            response.addCookie(new Cookie(HASH_COOKIE, null));
+            return null;
+        }
+        return new Principal() {
+            public String getName() {
+                return username;
+            }
+
+            @Override
+            public String toString() {
+                return "principal['" + getName() + "']";
+            }
+        };
     }
 
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
 
-        boolean skipAuthentication = skipAuthentication(request);
+        String requestURI = request.getDecodedRequestURI();
+        String contextPath = request.getContextPath();
 
-        if (skipAuthentication) {
+        Principal principal = authenticate(request, response);
+
+        if (principal != null) {
+            if (log.isDebugEnabled())
+                log.debug("Authorize request " + request.getRequestURL() + " for " + principal);
+
             getNext().invoke(request, response);
-        } else {
-            super.invoke(request, response);
+            return;
+        }
+
+        boolean isAuthenticationRequest = requestURI.startsWith(contextPath) &&
+                requestURI.endsWith(Constants.FORM_ACTION);
+        if (isAuthenticationRequest) {
+            String method = request.getMethod();
+            String username = request.getParameter(Constants.FORM_USERNAME);
+            String password = request.getParameter(Constants.FORM_PASSWORD);
+            String redirectUrl = request.getParameter(FORM_REDIRECT_URL);
+
+            // TODO check method = POST
+            Principal user = getContainer().getRealm().authenticate(username, password);
+
+            if (user == null) {
+                // auth failure
+                if (log.isInfoEnabled())
+                    log.info("Authentication FAILURE for '" + username + "' from " + request.getRemoteAddr());
+
+                forwardToErrorPage(request, response);
+            } else {
+                if (log.isInfoEnabled())
+                    log.info("Authentication SUCCESS for '" + username + "' from " + request.getRemoteAddr() + " redirect to '" + redirectUrl + "'");
+
+                encodeCookie(response, user);
+                response.sendRedirect(redirectUrl);
+            }
+            return;
+        }
+
+        boolean isSkipAuthenticationUrl = isSkipAuthenticationRequest(request);
+        if (isSkipAuthenticationUrl) {
+            if (log.isDebugEnabled())
+                log.debug("Skip authentication for request " + request.getRequestURL());
+            getNext().invoke(request, response);
+            return;
+        }
+
+        String redirectUrl = request.getRequestURL().toString();
+        String queryString = request.getQueryString();
+        if (queryString != null && !queryString.isEmpty()) {
+            redirectUrl += "?" + request.getQueryString();
+        }
+        if (log.isDebugEnabled())
+            log.debug("Redirect to authentication page request " + redirectUrl);
+
+        forwardToLoginPage(request, response, redirectUrl);
+    }
+
+    protected static MessageDigest md5Digester;
+
+    private MD5Encoder md5Encoder = new MD5Encoder();
+
+    public XFormAuthenticator() {
+        try {
+            md5Digester = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
     }
 
-    @Override
-    protected void forwardToErrorPage(Request request, Response response, LoginConfig config) throws IOException {
+    protected String hash(String principal, String salt) {
+        byte[] md5;
+        synchronized (md5Digester) {
+            md5 = md5Digester.digest(new String(salt + ":" + principal).getBytes());
+        }
+
+        return md5Encoder.encode(md5);
+    }
+
+    private void encodeCookie(Response response, Principal principal) throws IOException {
+        String hash = hash(principal.getName(), this.secret);
+        response.addCookie(new Cookie(USERNAME_COOKIE, principal.getName()));
+        response.addCookie(new Cookie(HASH_COOKIE, hash));
+    }
+
+    /**
+     * @return cookie value or <code>null</code> if not found
+     */
+    protected String getCookieValue(String name, Request request) throws IOException {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || name == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (name.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+
+    protected void forwardToErrorPage(Request request, Response response) throws IOException {
         HttpServletResponse httpServletResponse = response.getResponse();
         httpServletResponse.setContentType("text/html");
         httpServletResponse.addHeader("x-error", "authentication-error");
@@ -128,8 +273,7 @@ public class XFormAuthenticator extends FormAuthenticator implements Authenticat
         writer.flush();
     }
 
-    @Override
-    protected void forwardToLoginPage(Request request, Response response, LoginConfig config) throws IOException {
+    protected void forwardToLoginPage(Request request, Response response, String redirectUrl) throws IOException {
         HttpServletResponse httpServletResponse = response.getResponse();
         httpServletResponse.setContentType("text/html");
 
@@ -137,20 +281,21 @@ public class XFormAuthenticator extends FormAuthenticator implements Authenticat
         PrintWriter writer = httpServletResponse.getWriter();
         writer.println("<html>");
         writer.println("  <head>");
-        writer.println("    <title>Authentication</title>");
+        writer.println("    <title>Private Application - Authentication</title>");
         writer.println("    <meta name='robots' content='noindex, nofollow'>");
         writer.println("  </head>");
         writer.println("  <body>");
-        writer.println("    <h1>Authentication Form</h1>");
+        writer.println("    <h1>Private Application - Authentication</h1>");
         writer.println("    <form action='" + request.getContextPath() + Constants.FORM_ACTION + "' method='post'>");
+        writer.println("      <input name='" + FORM_REDIRECT_URL + "' value='" + redirectUrl + "' type='hidden'>");
         writer.println("      <fieldset>");
         writer.println("        <div>");
         writer.println("          <label for='" + Constants.FORM_USERNAME + "'>Username</label>");
-        writer.println("          <input name='" + Constants.FORM_USERNAME + "' type='text'/>");
+        writer.println("          <input id='" + Constants.FORM_USERNAME + "'  name='" + Constants.FORM_USERNAME + "' type='text'/>");
         writer.println("        </div>");
         writer.println("        <div>");
         writer.println("          <label for='" + Constants.FORM_PASSWORD + "'>Password</label>");
-        writer.println("          <input name='" + Constants.FORM_PASSWORD + "' type='password'/>");
+        writer.println("          <input id='" + Constants.FORM_PASSWORD + "' name='" + Constants.FORM_PASSWORD + "' type='password'/>");
         writer.println("        </div>");
         writer.println("        <div>");
         writer.println("          <button type='submit'>Login</input>");
@@ -163,20 +308,18 @@ public class XFormAuthenticator extends FormAuthenticator implements Authenticat
 
     }
 
-    public String getIncludeUrlPattern() {
-        return includeUrlPattern.pattern();
-    }
-
     public void setIncludeUrlPattern(String includeUrlPattern) {
-        this.includeUrlPattern = Pattern.compile(includeUrlPattern);
-    }
-
-    public String getExcludeUrlPattern() {
-        return excludeUrlPattern.pattern();
+        log.debug("setIncludeUrlPattern(" + includeUrlPattern + ")");
+        this.includeUrlPatternRegex = Pattern.compile(includeUrlPattern);
     }
 
     public void setExcludeUrlPattern(String excludeUrlPattern) {
-        this.excludeUrlPattern = Pattern.compile(excludeUrlPattern);
+        log.debug("setExcludeUrlPattern(" + excludeUrlPattern + ")");
+        this.excludeUrlPatternRegex = Pattern.compile(excludeUrlPattern);
     }
 
+    public void setSecret(String secret) {
+        log.debug("setSecret(xxx)");
+        this.secret = secret;
+    }
 }
