@@ -191,9 +191,9 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
                 x509TrustManager.checkClientTrusted(certs, authType);
             } catch (CertificateException e) {
                 if (log.isDebugEnabled()) {
-                    log.error(buildLogCertificationException(certs), e);
+                    log.warn(buildLogCertificationException(certs), e);
                 } else {
-                    log.error(buildLogCertificationException(certs) + " : " + e);
+                    log.warn(buildLogCertificationException(certs) + " : " + e);
                 }
             }
         }
@@ -351,7 +351,7 @@ public class AcceptAllSslCertificatesListener implements LifecycleListener {
                 HttpsURLConnection.setDefaultSSLSocketFactory(sslSocketFactory);
 
                 log
-                    .error("SSL VERIFICATIONS DISABLED ! SECURITY IS JEOPARDIZED ! SHOULD BE USED CAREFULLY IN PRODUCTION !");
+                    .warn("SSL VERIFICATIONS DISABLED ! SECURITY IS JEOPARDIZED ! SHOULD BE USED CAREFULLY IN PRODUCTION !");
             } else {
                 log.info("AcceptAllSslCertificatesListener is disabled. SSL verifications are activated.");
             }
