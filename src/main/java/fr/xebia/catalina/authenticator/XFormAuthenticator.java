@@ -74,7 +74,21 @@ public class XFormAuthenticator extends ValveBase {
             "|" + ".*\\.css" +
             "|" + ".*\\.js");
 
-    private String secret = String.valueOf(new Random().nextLong());
+    private final static String globalSecret = String.valueOf(new Random().nextLong());
+
+    private String secret;
+
+    protected static MessageDigest md5Digester;
+
+    private MD5Encoder md5Encoder = new MD5Encoder();
+
+    public XFormAuthenticator() {
+        try {
+            md5Digester = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
     public boolean isSkipAuthenticationRequest(Request request) {
 
@@ -115,6 +129,13 @@ public class XFormAuthenticator extends ValveBase {
         return false;
     }
 
+    protected String getSecret(){
+        if(secret == null) {
+            return globalSecret;
+        } else {
+            return secret;
+        }
+    }
     /**
      * @return authenticated user or <code>null</code> if user is not authenticated.
      */
@@ -127,16 +148,21 @@ public class XFormAuthenticator extends ValveBase {
             return null;
         }
 
-        String expectedHash = hash(username, this.secret);
+        String expectedHash = hash(username);
 
         if (!expectedHash.equals(actualHash)) {
             log.warn("Authentication FAILURE - Invalid hash for username:'" + username +
                     "', ip:'" + request.getRemoteAddr() + "', request: '" + request.getRequestURL() + "'");
-
+            if (log.isDebugEnabled())
+                log.warn("Authentication FAILURE - actual-hash:'" + actualHash + "', expected-hash:'" + expectedHash + "'");
             log.warn("NOTE: If your application is clusterized on several nodes, ensure the 'secret' attribute is defined on the Valve's configuration");
 
-            response.addCookie(new Cookie(USERNAME_COOKIE, null));
-            response.addCookie(new Cookie(HASH_COOKIE, null));
+            Cookie userNameCookie = new Cookie(USERNAME_COOKIE, null);
+            userNameCookie.setMaxAge(0);
+            response.addCookie(userNameCookie);
+            Cookie hashCookie = new Cookie(HASH_COOKIE, null);
+            hashCookie.setMaxAge(0);
+            response.addCookie(hashCookie);
             return null;
         }
         return new Principal() {
@@ -150,6 +176,7 @@ public class XFormAuthenticator extends ValveBase {
             }
         };
     }
+
 
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
@@ -212,16 +239,8 @@ public class XFormAuthenticator extends ValveBase {
         forwardToLoginPage(request, response, redirectUrl);
     }
 
-    protected static MessageDigest md5Digester;
-
-    private MD5Encoder md5Encoder = new MD5Encoder();
-
-    public XFormAuthenticator() {
-        try {
-            md5Digester = MessageDigest.getInstance("MD5");
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
+    protected String hash(String username) {
+        return hash(username, getSecret());
     }
 
     protected String hash(String principal, String salt) {
@@ -234,7 +253,7 @@ public class XFormAuthenticator extends ValveBase {
     }
 
     private void encodeCookie(Response response, Principal principal) throws IOException {
-        String hash = hash(principal.getName(), this.secret);
+        String hash = hash(principal.getName());
         response.addCookie(new Cookie(USERNAME_COOKIE, principal.getName()));
         response.addCookie(new Cookie(HASH_COOKIE, hash));
     }
